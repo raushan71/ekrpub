@@ -53,11 +53,11 @@ android {
             release {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                def storeFile = keystoreProperties['storeFile'].replace('\\', '/')
-                if (!storeFile.startsWith('/')) {
-                    storeFile = rootProject.file(storeFile).getAbsolutePath()
+                def storeFilePath = keystoreProperties['storeFile'].replace('\\', '/')
+                if (!storeFilePath.startsWith('/')) {
+                    storeFilePath = rootProject.file(storeFilePath).getAbsolutePath()
                 }
-                storeFile file(storeFile)
+                storeFile = file(storeFilePath)
                 storePassword keystoreProperties['storePassword']
             }
         }
