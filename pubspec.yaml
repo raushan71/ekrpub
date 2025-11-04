@@ -89,6 +89,6 @@ flutter:
       fonts:
         - asset: assets/font/Mulish-Regular.ttf
         - asset: assets/font/Mulish-Medium.ttf
-        - asset: assets/font/Mulish-bold.ttf
-        - asset: assets/font/Mulish-light.ttf
+        - asset: assets/font/Mulish-Bold.ttf
+        - asset: assets/font/Mulish-Light.ttf
         - asset: assets/font/Mulish-Italic.ttf
