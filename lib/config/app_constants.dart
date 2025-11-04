@@ -1,11 +1,9 @@
 class AppConstants {
-// Codecanyon
+  // Ekray Production API
   static const String baseUrl = 'https://ekray.com/api';
-  // QA Testing
-  //static const String baseUrl = 'https://uat.readyecommerce.app/api';
-  // static const String baseUrl = 'http://chat.razinsoft.site/api';
-  // Development
-  // static const String baseUrl = 'https://dev.readyecommerce.app/api';
+  // Alternative API endpoints (commented out)
+  // static const String baseUrl = 'https://uat.ekray.com/api';
+  // static const String baseUrl = 'https://dev.ekray.com/api';
   static const String settings = '$baseUrl/master';
   static const String loginUrl = '$baseUrl/login';
   static const String registrationUrl = '$baseUrl/registration';

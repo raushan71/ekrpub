@@ -75,11 +75,12 @@ jobs:
       - name: Verify imports
         run: |
           echo "🔍 Checking for old package references..."
-          if grep -r "package:ready_ecommerce" lib/ --include="*.dart" | head -5; then
-            echo "❌ Found old package references"
+          # Check for uncommented package references (ignore comments)
+          if grep -r "package:ready_ecommerce" lib/ --include="*.dart" | grep -v "^\s*//" | head -5; then
+            echo "❌ Found old package references in code"
             exit 1
           else
-            echo "✅ No old package references found"
+            echo "✅ No old package references found in code"
           fi
 
       - name: Check for build errors
