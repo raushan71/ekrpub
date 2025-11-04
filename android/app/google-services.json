@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "419311052239",
+    "project_id": "ekray-de8d5",
+    "storage_bucket": "ekray-de8d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419311052239:android:57ce5b3e03f4e2b25f9eba",
+        "android_client_info": {
+          "package_name": "com.ekray.apps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVDfUbrfE6z8bdUHtUFsz8eRCOO-nsdBY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

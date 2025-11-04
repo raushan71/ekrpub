@@ -1,0 +1,2 @@
+/Users/razinsoft/development/Projects/ready-ecommerce-customer/android/app/.cxx/RelWithDebInfo/58272i1x/x86/CMakeFiles/edit_cache.dir
+/Users/razinsoft/development/Projects/ready-ecommerce-customer/android/app/.cxx/RelWithDebInfo/58272i1x/x86/CMakeFiles/rebuild_cache.dir
