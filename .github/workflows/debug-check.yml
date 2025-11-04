@@ -75,13 +75,13 @@ jobs:
       - name: Verify imports
         run: |
           echo "🔍 Checking for old package references..."
-          # Check for uncommented package references (ignore comments and blank lines)
-          # Use perl-style regex for better comment detection
-          MATCHES=$(grep -r "package:ready_ecommerce" lib/ --include="*.dart" -P | grep -vP "^\s*(//|/\*|\*)" | grep -v "^\s*$" || true)
+          # Check for uncommented package references (ignore comments)
+          # Filter out lines that start with whitespace followed by // or /* or *
+          MATCHES=$(grep -r "package:ready_ecommerce" lib/ --include="*.dart" | grep -v "^[[:space:]]*//" | grep -v "^[[:space:]]*/\*" | grep -v "^[[:space:]]*\*" | grep -v "^[[:space:]]*$" || true)
           if [ -n "$MATCHES" ]; then
             echo "⚠️ Found potential old package references:"
             echo "$MATCHES" | head -5
-            echo "⚠️ This check is non-blocking - continuing build..."
+            echo "⚠️ Note: This check is non-blocking"
           else
             echo "✅ No old package references found in code"
           fi
