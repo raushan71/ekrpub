@@ -36,7 +36,7 @@ jobs:
         continue-on-error: true
 
       - name: Run tests
-        run: flutter test --no-pub || true
+        run: flutter test --no-pub
         continue-on-error: true
 
       - name: Build APK (Release)
