@@ -14,8 +14,23 @@ android {
 
     def keystoreProperties = new Properties()
     def keystorePropertiesFile = rootProject.file("key.properties")
+    def keystoreExists = false
+    
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+        def storeFile = keystoreProperties['storeFile']
+        if (storeFile != null) {
+            // Handle both absolute and relative paths
+            def storeFilePath = storeFile.replace('\\', '/')
+            if (!storeFilePath.startsWith('/')) {
+                // Relative path - resolve from root project
+                storeFilePath = rootProject.file(storeFilePath).getAbsolutePath()
+            }
+            def keystoreFile = file(storeFilePath)
+            if (keystoreFile.exists()) {
+                keystoreExists = true
+            }
+        }
     }
 
     compileOptions {
@@ -34,11 +49,17 @@ android {
     }
 
     signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
+        if (keystoreExists) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                def storeFile = keystoreProperties['storeFile'].replace('\\', '/')
+                if (!storeFile.startsWith('/')) {
+                    storeFile = rootProject.file(storeFile).getAbsolutePath()
+                }
+                storeFile file(storeFile)
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
@@ -47,7 +68,12 @@ android {
             shrinkResources = true
             minifyEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig = signingConfigs.release
+            if (keystoreExists) {
+                signingConfig = signingConfigs.release
+            } else {
+                // Use debug signing for CI builds (unsigned release)
+                signingConfig = signingConfigs.debug
+            }
         }
     }
     kotlinOptions {
