@@ -1,0 +1,97 @@
+name: Build Release APK
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test --no-pub
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Build Release App Bundle
+        run: flutter build appbundle --release
+
+      - name: Generate build info
+        run: |
+          echo "📱 Ekray Android App" > build-info.txt
+          echo "Version: $(grep 'version:' pubspec.yaml | cut -d ' ' -f 2)" >> build-info.txt
+          echo "Build Date: $(date)" >> build-info.txt
+          echo "Commit: $(git rev-parse --short HEAD)" >> build-info.txt
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekray-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 90
+
+      - name: Upload Release App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekray-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: build-info.txt
+          retention-days: 90
+
+      - name: Create GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          body: |
+            ## Ekray Android Release
+            
+            ### Build Information
+            - Version: ${{ github.event.release.tag_name }}
+            - Build Date: $(date)
+            - Commit: ${{ github.sha }}
+            
+            ### Downloads
+            - **APK**: app-release.apk
+            - **App Bundle**: app-release.aab
+            
+            ### Installation
+            1. Download the APK file
+            2. Enable "Install from unknown sources" on your Android device
+            3. Install the APK
+

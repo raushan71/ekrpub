@@ -1,0 +1,67 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Run Flutter analyzer
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --no-pub
+
+      - name: Build iOS (Debug)
+        run: flutter build ios --debug --no-codesign
+
+      - name: Build iOS (Release)
+        run: flutter build ios --release --no-codesign
+
+      - name: Build IPA (requires code signing)
+        run: |
+          echo "⚠️ IPA build requires code signing setup"
+          echo "To enable IPA builds, configure code signing in Xcode"
+          echo "Current build completed without IPA generation"
+
+      - name: Upload iOS build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: build/ios/iphoneos/Runner.app
+          retention-days: 30
+        if: always()
+        continue-on-error: true
+
+      - name: Display build info
+        run: |
+          echo "✅ iOS builds completed!"
+          echo "📱 Debug build: build/ios/iphoneos/Runner.app"
+          echo "📱 Release build: build/ios/iphoneos/Runner.app"
+          echo "ℹ️ Note: IPA generation requires code signing setup"
+

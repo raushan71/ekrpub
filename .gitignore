@@ -47,3 +47,9 @@ app.*.map.json
 .fvm/
 # VS Code
 .vscode/
+
+# GitHub Actions artifacts
+*.apk
+*.aab
+*.ipa
+build-info.txt

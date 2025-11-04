@@ -1,0 +1,70 @@
+name: Code Analysis & Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Verify Flutter installation
+        run: flutter doctor -v
+
+      - name: Check Flutter formatting
+        run: flutter format --set-exit-if-changed .
+
+      - name: Run Flutter analyzer
+        run: flutter analyze
+        continue-on-error: false
+
+      - name: Check for linter errors
+        run: |
+          flutter analyze --no-fatal-infos | tee analyze-output.txt
+          if grep -q "error •" analyze-output.txt; then
+            echo "❌ Found errors in code analysis"
+            exit 1
+          else
+            echo "✅ No errors found in code analysis"
+          fi
+
+      - name: Run tests
+        run: flutter test --coverage --no-pub
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      - name: Check code quality
+        run: |
+          echo "📊 Code Analysis Summary:"
+          flutter analyze --no-fatal-infos | grep -E "(error|warning|info)" | head -20 || true
+
+      - name: Display results
+        run: |
+          echo "✅ Code analysis completed!"
+          echo "✅ Tests completed!"
+          echo "📊 Check the artifacts for detailed reports"
+
