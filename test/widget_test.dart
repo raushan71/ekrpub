@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ekray/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive/hive.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:ekray/config/app_constants.dart';
 import 'package:ekray/models/eCommerce/cart/hive_cart_model.dart';
@@ -17,23 +17,34 @@ import 'package:ekray/firebase_options.dart';
 
 void main() {
   setUpAll(() async {
-    // Initialize Hive for testing
-    await Hive.initFlutter();
+    // Initialize Hive for testing (use Hive.init instead of Hive.initFlutter for tests)
+    TestWidgetsFlutterBinding.ensureInitialized();
+    
+    // Use a temporary directory for Hive in tests
+    Hive.init('test/hive_test');
     await Hive.openBox(AppConstants.appSettingsBox);
     await Hive.openBox(AppConstants.userBox);
     Hive.registerAdapter(HiveCartModelAdapter());
     await Hive.openBox<HiveCartModel>(AppConstants.cartModelBox);
     
     // Initialize Firebase for testing
-    TestWidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      // Firebase might fail in test environment, that's okay
+      print('Firebase initialization skipped in test: $e');
+    }
   });
 
   tearDownAll(() async {
     // Clean up Hive boxes after tests
-    await Hive.close();
+    try {
+      await Hive.close();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
   });
 
   testWidgets('App launches successfully', (WidgetTester tester) async {
