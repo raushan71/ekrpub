@@ -15,20 +15,38 @@ android {
     def keystoreProperties = new Properties()
     def keystorePropertiesFile = rootProject.file("key.properties")
     def keystoreExists = false
+    def keystoreFilePath = null
     
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
         def storeFile = keystoreProperties['storeFile']
-        if (storeFile != null) {
-            // Handle both absolute and relative paths
-            def storeFilePath = storeFile.replace('\\', '/')
-            if (!storeFilePath.startsWith('/')) {
-                // Relative path - resolve from root project
-                storeFilePath = rootProject.file(storeFilePath).getAbsolutePath()
-            }
-            def keystoreFile = file(storeFilePath)
-            if (keystoreFile.exists()) {
-                keystoreExists = true
+        if (storeFile != null && !storeFile.isEmpty()) {
+            try {
+                // Handle both absolute and relative paths
+                def storeFilePath = storeFile.replace('\\', '/')
+                
+                // Skip Windows absolute paths (C:/, D:/, etc.) in CI environment
+                if (storeFilePath.matches('^[A-Za-z]:.*')) {
+                    println "⚠️ Skipping Windows absolute path in CI: ${storeFilePath}"
+                    keystoreExists = false
+                } else if (!storeFilePath.startsWith('/')) {
+                    // Relative path - resolve from root project
+                    def resolvedPath = rootProject.file(storeFilePath)
+                    if (resolvedPath.exists()) {
+                        keystoreFilePath = resolvedPath.getAbsolutePath()
+                        keystoreExists = true
+                    }
+                } else {
+                    // Absolute Unix path
+                    def keystoreFile = file(storeFilePath)
+                    if (keystoreFile.exists()) {
+                        keystoreFilePath = storeFilePath
+                        keystoreExists = true
+                    }
+                }
+            } catch (Exception e) {
+                println "⚠️ Error checking keystore file: ${e.message}"
+                keystoreExists = false
             }
         }
     }
@@ -49,15 +67,11 @@ android {
     }
 
     signingConfigs {
-        if (keystoreExists) {
+        if (keystoreExists && keystoreFilePath != null) {
             release {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                def storeFilePath = keystoreProperties['storeFile'].replace('\\', '/')
-                if (!storeFilePath.startsWith('/')) {
-                    storeFilePath = rootProject.file(storeFilePath).getAbsolutePath()
-                }
-                storeFile = file(storeFilePath)
+                storeFile = file(keystoreFilePath)
                 storePassword keystoreProperties['storePassword']
             }
         }
