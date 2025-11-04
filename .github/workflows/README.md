@@ -92,9 +92,9 @@ All workflows upload build artifacts:
 ## 🔧 Configuration
 
 ### Flutter Version
-All workflows use Flutter **3.24.0** (stable channel). To update:
+All workflows use Flutter **3.27.0** (stable channel) which includes Dart SDK 3.5.3+. To update:
 ```yaml
-flutter-version: '3.24.0'  # Update in each workflow file
+flutter-version: '3.27.0'  # Update in each workflow file
 ```
 
 ### Java Version

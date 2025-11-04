@@ -3,7 +3,7 @@ description: A Flutter e-commerce mobile application for Ekray.
 publish_to: none
 version: 1.0.5+7
 environment:
-  sdk: ">=3.5.0 <4.0.0"
+  sdk: ">=3.5.3 <4.0.0"
 
 dependencies:
   flutter:
