@@ -337,6 +337,15 @@ class AuthController extends StateNotifier<bool> {
         phone: firebaseUser.phoneNumber,
       );
 
+      // Check for 403 or other error status codes
+      if (response.statusCode == 403) {
+        state = false;
+        final errorMessage = response.data is Map 
+            ? (response.data['message'] ?? 'Access forbidden. Please check backend configuration.')
+            : 'Access forbidden (403). Firebase token verification failed on backend.';
+        return CommonResponse(isSuccess: false, message: errorMessage);
+      }
+
       final String message = response.data['message'] ?? 'Google sign in successful';
 
       if (response.statusCode == 200 || response.statusCode == 201) {

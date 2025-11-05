@@ -111,11 +111,37 @@ class FirebaseAuthService {
       );
       return response;
     } on DioException catch (e) {
-      debugPrint('Dio error linking with backend: ${e.response?.data}');
+      debugPrint('Dio error linking with backend: ${e.response?.statusCode} - ${e.response?.data}');
       
-      // Handle specific HTTP method errors
+      // Handle specific HTTP status codes
+      if (e.response?.statusCode == 403) {
+        String errorMessage = 'Access forbidden (403). ';
+        if (e.response?.data != null) {
+          final errorData = e.response!.data;
+          if (errorData is Map) {
+            final message = errorData['message'] ?? errorData['error'];
+            if (message != null) {
+              errorMessage += message;
+            } else {
+              errorMessage += 'Firebase token verification failed. Please ensure Firebase credentials file is uploaded to the server.';
+            }
+          } else if (errorData is String) {
+            errorMessage += errorData;
+          } else {
+            errorMessage += 'Firebase token verification failed. Please check backend configuration.';
+          }
+        } else {
+          errorMessage += 'Firebase token verification failed. Please ensure Firebase credentials file is uploaded to the server at: /home/ekray/htdocs/ekray.com/storage/app/public/firebase_credentials.json';
+        }
+        throw Exception(errorMessage);
+      }
+      
       if (e.response?.statusCode == 405) {
         throw Exception('Backend endpoint not configured. Please ensure POST route exists for /api/firebase-auth');
+      }
+      
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Invalid Firebase token. Please try signing in again.');
       }
       
       // Handle error messages from backend
