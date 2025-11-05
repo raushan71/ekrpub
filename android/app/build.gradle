@@ -31,10 +31,18 @@ android {
                     keystoreExists = false
                 } else if (!storeFilePath.startsWith('/')) {
                     // Relative path - resolve from root project
-                    def resolvedPath = rootProject.file(storeFilePath)
-                    if (resolvedPath.exists()) {
-                        keystoreFilePath = resolvedPath.getAbsolutePath()
+                    // Try android/ directory first (for CI builds)
+                    def androidPath = rootProject.file("android/${storeFilePath}")
+                    if (androidPath.exists()) {
+                        keystoreFilePath = androidPath.getAbsolutePath()
                         keystoreExists = true
+                    } else {
+                        // Fallback to original relative path
+                        def resolvedPath = rootProject.file(storeFilePath)
+                        if (resolvedPath.exists()) {
+                            keystoreFilePath = resolvedPath.getAbsolutePath()
+                            keystoreExists = true
+                        }
                     }
                 } else {
                     // Absolute Unix path

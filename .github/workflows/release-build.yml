@@ -39,6 +39,32 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Setup Release Keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "🔐 Setting up release keystore..."
+            mkdir -p android/app/keystore
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore/ekray-release-key.jks
+            chmod 600 android/app/keystore/ekray-release-key.jks
+            echo "✅ Keystore decoded successfully"
+            
+            # Create key.properties file
+            mkdir -p android
+            cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=app/keystore/ekray-release-key.jks
+          EOF
+            echo "✅ key.properties created"
+            
+            # Verify keystore
+            keytool -list -v -keystore android/app/keystore/ekray-release-key.jks -alias "${{ secrets.KEY_ALIAS }}" -storepass "${{ secrets.KEYSTORE_PASSWORD }}" || true
+          else
+            echo "❌ ERROR: Keystore not found in secrets. Please add KEYSTORE_BASE64 to GitHub Secrets."
+            exit 1
+          fi
+
       - name: Run tests
         run: flutter test --no-pub
 
