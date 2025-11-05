@@ -7,6 +7,8 @@ import 'package:ekray/models/eCommerce/authentication/user.dart';
 import 'package:ekray/models/eCommerce/common/common_response.dart';
 import 'package:ekray/services/common/hive_service_provider.dart';
 import 'package:ekray/services/eCommerce/auth_service/auth_service.dart';
+import 'package:ekray/services/eCommerce/firebase_auth_service/firebase_auth_service.dart';
+import 'package:ekray/controllers/eCommerce/address/address_controller.dart';
 import 'package:ekray/utils/api_client.dart';
 
 final authControllerProvider =
@@ -173,12 +175,191 @@ class AuthController extends StateNotifier<bool> {
       state = true;
       final response = await ref.read(authServiceProvider).logout();
       final String message = response.data['message'];
+
+      // Also sign out from Firebase
+      await ref.read(firebaseAuthServiceProvider).signOut();
+
       state = false;
       return CommonResponse(isSuccess: true, message: message);
     } catch (error) {
       state = false;
       debugPrint(error.toString());
       return CommonResponse(isSuccess: false, message: error.toString());
+    }
+  }
+
+  /// Sign up with email and password using Firebase Auth
+  Future<CommonResponse> signUpWithEmailPassword({
+    required String email,
+    required String password,
+    String? name,
+    String? phone,
+  }) async {
+    try {
+      state = true;
+
+      // Sign up with Firebase Auth
+      final userCredential = await ref.read(firebaseAuthServiceProvider)
+          .signUpWithEmailPassword(email: email, password: password);
+
+      // Get Firebase ID token
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        state = false;
+        return CommonResponse(
+          isSuccess: false,
+          message: 'Failed to get Firebase authentication token',
+        );
+      }
+
+      // Link with Laravel backend
+      final response = await ref.read(firebaseAuthServiceProvider)
+          .linkWithLaravelBackend(
+        firebaseIdToken: firebaseIdToken,
+        name: name,
+        email: email,
+        phone: phone,
+      );
+
+      final String message = response.data['message'] ?? 'Registration successful';
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final userInfo = User.fromMap(response.data['data']['user']);
+        final accessToken = response.data['data']['access']['token'];
+        ref.read(hiveServiceProvider).saveUserInfo(userInfo: userInfo);
+        ref.read(hiveServiceProvider).saveUserAuthToken(authToken: accessToken);
+        ref.read(apiClientProvider).updateToken(token: accessToken);
+        ref.read(addressControllerProvider.notifier).getAddress();
+        state = false;
+        return CommonResponse(isSuccess: true, message: message);
+      }
+
+      state = false;
+      return CommonResponse(isSuccess: false, message: message);
+    } catch (error) {
+      state = false;
+      debugPrint('Firebase sign up error: $error');
+      return CommonResponse(
+        isSuccess: false,
+        message: error.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  /// Sign in with email and password using Firebase Auth
+  Future<CommonResponse> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      state = true;
+
+      // Sign in with Firebase Auth
+      final userCredential = await ref.read(firebaseAuthServiceProvider)
+          .signInWithEmailPassword(email: email, password: password);
+
+      // Get Firebase ID token
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        state = false;
+        return CommonResponse(
+          isSuccess: false,
+          message: 'Failed to get Firebase authentication token',
+        );
+      }
+
+      // Link with Laravel backend
+      final response = await ref.read(firebaseAuthServiceProvider)
+          .linkWithLaravelBackend(
+        firebaseIdToken: firebaseIdToken,
+        email: email,
+      );
+
+      final String message = response.data['message'] ?? 'Login successful';
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final userInfo = User.fromMap(response.data['data']['user']);
+        final accessToken = response.data['data']['access']['token'];
+        ref.read(hiveServiceProvider).saveUserInfo(userInfo: userInfo);
+        ref.read(hiveServiceProvider).saveUserAuthToken(authToken: accessToken);
+        ref.read(apiClientProvider).updateToken(token: accessToken);
+        ref.read(addressControllerProvider.notifier).getAddress();
+        state = false;
+        return CommonResponse(isSuccess: true, message: message);
+      }
+
+      state = false;
+      return CommonResponse(isSuccess: false, message: message);
+    } catch (error) {
+      state = false;
+      debugPrint('Firebase sign in error: $error');
+      return CommonResponse(
+        isSuccess: false,
+        message: error.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  /// Sign in with Google
+  Future<CommonResponse> signInWithGoogle() async {
+    try {
+      state = true;
+
+      // Sign in with Google
+      final userCredential = await ref.read(firebaseAuthServiceProvider)
+          .signInWithGoogle();
+
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        state = false;
+        return CommonResponse(
+          isSuccess: false,
+          message: 'Google sign in failed',
+        );
+      }
+
+      // Get Firebase ID token
+      final firebaseIdToken = await firebaseUser.getIdToken();
+      if (firebaseIdToken == null) {
+        state = false;
+        return CommonResponse(
+          isSuccess: false,
+          message: 'Failed to get Firebase authentication token',
+        );
+      }
+
+      // Link with Laravel backend
+      final response = await ref.read(firebaseAuthServiceProvider)
+          .linkWithLaravelBackend(
+        firebaseIdToken: firebaseIdToken,
+        name: firebaseUser.displayName,
+        email: firebaseUser.email,
+        phone: firebaseUser.phoneNumber,
+      );
+
+      final String message = response.data['message'] ?? 'Google sign in successful';
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final userInfo = User.fromMap(response.data['data']['user']);
+        final accessToken = response.data['data']['access']['token'];
+        ref.read(hiveServiceProvider).saveUserInfo(userInfo: userInfo);
+        ref.read(hiveServiceProvider).saveUserAuthToken(authToken: accessToken);
+        ref.read(apiClientProvider).updateToken(token: accessToken);
+        ref.read(addressControllerProvider.notifier).getAddress();
+        state = false;
+        return CommonResponse(isSuccess: true, message: message);
+      }
+
+      state = false;
+      return CommonResponse(isSuccess: false, message: message);
+    } catch (error) {
+      state = false;
+      debugPrint('Google sign in error: $error');
+      String errorMessage = error.toString().replaceAll('Exception: ', '');
+      if (errorMessage.contains('cancelled')) {
+        errorMessage = 'Sign in was cancelled';
+      }
+      return CommonResponse(isSuccess: false, message: errorMessage);
     }
   }
 }

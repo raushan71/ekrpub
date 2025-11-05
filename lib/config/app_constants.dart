@@ -7,6 +7,7 @@ class AppConstants {
   static const String settings = '$baseUrl/master';
   static const String loginUrl = '$baseUrl/login';
   static const String registrationUrl = '$baseUrl/registration';
+  static const String firebaseAuthUrl = '$baseUrl/firebase-auth';
   static const String sendOTP = '$baseUrl/send-otp';
   static const String verifyOtp = '$baseUrl/verify-otp';
   static const String resetPassword = '$baseUrl/reset-password';

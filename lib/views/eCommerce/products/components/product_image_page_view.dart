@@ -8,6 +8,7 @@ import 'package:ekray/controllers/misc/misc_controller.dart';
 import 'package:ekray/models/eCommerce/product/product_details.dart';
 import 'package:ekray/views/eCommerce/products/components/iframe_card.dart';
 import 'package:ekray/views/eCommerce/products/components/video_player.dart';
+import 'package:ekray/views/eCommerce/products/components/full_screen_image_view.dart';
 
 import '../../../../config/app_constants.dart';
 
@@ -40,6 +41,17 @@ class _ProductImagePageViewState extends ConsumerState<ProductImagePageView> {
     super.initState();
   }
 
+  void _showFullScreenImage(BuildContext context, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullScreenImageView(
+          images: widget.productDetails.product.thumbnails,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -54,11 +66,30 @@ class _ProductImagePageViewState extends ConsumerState<ProductImagePageView> {
               final fileSystem =
                   widget.productDetails.product.thumbnails[index].type;
               if (fileSystem == FileSystem.image.name) {
-                return CachedNetworkImage(
-                  imageUrl: widget
-                          .productDetails.product.thumbnails[index].thumbnail ??
-                      '',
-                  fit: BoxFit.contain,
+                final imageUrl = widget
+                        .productDetails.product.thumbnails[index].thumbnail ??
+                    '';
+                return GestureDetector(
+                  onDoubleTap: () {
+                    _showFullScreenImage(context, index);
+                  },
+                  onTap: () {
+                    // Single tap to show full screen
+                    _showFullScreenImage(context, index);
+                  },
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Center(
+                      child: CircularProgressIndicator(
+                        color: colors(context).primaryColor,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Icon(
+                      Icons.error,
+                      color: colors(context).errorColor,
+                    ),
+                  ),
                 );
               } else if (fileSystem == FileSystem.file.name) {
                 return VideoPlayer(

@@ -144,15 +144,30 @@ class _LoginLayoutState extends State<LoginLayout> {
           CustomTextFormField(
             name: S.of(context).emailOrPhone,
             hintText: S.of(context).emailOrPhone,
-            textInputType: TextInputType.text,
+            textInputType: TextInputType.emailAddress,
             controller: phoneController,
             focusNode: fNodes[0],
             textInputAction: TextInputAction.next,
-            validator: (value) => GlobalFunction.commonValidator(
-              value: value!,
-              hintText: S.of(context).emailOrPhone,
-              context: context,
-            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter email or phone';
+              }
+              // Check if it's an email
+              final isEmail = value.contains('@') && value.contains('.');
+              if (isEmail) {
+                return GlobalFunction.emailValidator(
+                  value: value,
+                  hintText: S.of(context).emailOrPhone,
+                  context: context,
+                );
+              }
+              // Otherwise validate as phone
+              return GlobalFunction.commonValidator(
+                value: value,
+                hintText: S.of(context).emailOrPhone,
+                context: context,
+              );
+            },
           ),
           Gap(20.h),
           Consumer(builder: (context, ref, _) {
@@ -209,25 +224,146 @@ class _LoginLayoutState extends State<LoginLayout> {
                     onPressed: () {
                       FocusScope.of(context).unfocus();
                       if (formKey.currentState!.validate()) {
-                        ref
-                            .read(authControllerProvider.notifier)
-                            .login(
-                              phone: phoneController.text,
-                              password: passwordController.text,
-                            )
-                            .then((response) {
+                        final input = phoneController.text.trim();
+                        final isEmail = input.contains('@') && input.contains('.');
+
+                        if (isEmail) {
+                          // Use Firebase Auth email/password login
                           ref
-                              .read(addressControllerProvider.notifier)
-                              .getAddress();
-                          if (response.isSuccess) {
-                            context.nav.pushNamed(Routes.getCoreRouteName(
-                                AppConstants.appServiceName));
-                          }
-                        });
+                              .read(authControllerProvider.notifier)
+                              .signInWithEmailPassword(
+                                email: input,
+                                password: passwordController.text,
+                              )
+                              .then((response) {
+                            if (response.isSuccess) {
+                              ref
+                                  .read(addressControllerProvider.notifier)
+                                  .getAddress();
+                              context.nav.pushNamed(Routes.getCoreRouteName(
+                                  AppConstants.appServiceName));
+                            } else {
+                              GlobalFunction.showCustomSnackbar(
+                                message: response.message,
+                                isSuccess: false,
+                              );
+                            }
+                          });
+                        } else {
+                          // Use existing phone/password login
+                          ref
+                              .read(authControllerProvider.notifier)
+                              .login(
+                                phone: input,
+                                password: passwordController.text,
+                              )
+                              .then((response) {
+                            if (response.isSuccess) {
+                              ref
+                                  .read(addressControllerProvider.notifier)
+                                  .getAddress();
+                              context.nav.pushNamed(Routes.getCoreRouteName(
+                                  AppConstants.appServiceName));
+                            } else {
+                              GlobalFunction.showCustomSnackbar(
+                                message: response.message,
+                                isSuccess: false,
+                              );
+                            }
+                          });
+                        }
                       }
                     },
                   );
           }),
+          Gap(20.h),
+          // Divider with "OR"
+          Row(
+            children: [
+              Expanded(
+                child: Divider(
+                  color: colors(context).hintTextColor ?? EcommerceAppColor.lightGray,
+                  thickness: 1,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Text(
+                  'OR',
+                  style: AppTextStyle(context).bodyText.copyWith(
+                        color: colors(context).hintTextColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
+              ),
+              Expanded(
+                child: Divider(
+                  color: colors(context).hintTextColor ?? EcommerceAppColor.lightGray,
+                  thickness: 1,
+                ),
+              ),
+            ],
+          ),
+          Gap(20.h),
+          // Google Sign-In Button
+          Consumer(builder: (context, ref, _) {
+            return ref.watch(authControllerProvider)
+                ? const SizedBox.shrink()
+                : SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        FocusScope.of(context).unfocus();
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .signInWithGoogle()
+                            .then((response) {
+                          if (response.isSuccess) {
+                            ref
+                                .read(addressControllerProvider.notifier)
+                                .getAddress();
+                            context.nav.pushNamed(Routes.getCoreRouteName(
+                                AppConstants.appServiceName));
+                          } else {
+                            GlobalFunction.showCustomSnackbar(
+                              message: response.message,
+                              isSuccess: false,
+                            );
+                          }
+                        });
+                      },
+                      icon: Image.asset(
+                        'assets/png/google_logo.png',
+                        width: 24.w,
+                        height: 24.h,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.login,
+                            size: 24.sp,
+                            color: Colors.grey[700],
+                          );
+                        },
+                      ),
+                      label: Text(
+                        'Continue with Google',
+                        style: AppTextStyle(context).buttonText.copyWith(
+                              color: colors(context).primaryColor,
+                            ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        side: BorderSide(
+                          color: colors(context).primaryColor ?? EcommerceAppColor.primary,
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                      ),
+                    ),
+                  );
+          }),
+          Gap(30.h),
           Consumer(
             builder: (context, ref, _) {
               return Align(

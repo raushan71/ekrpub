@@ -423,15 +423,51 @@ class _SignUpLayoutState extends State<SignUpLayout> {
                         onPressed: () {
                           FocusScope.of(context).unfocus();
                           if (formKey.currentState!.validate()) {
-                            final SingUp singUpInfo = SingUp(
-                              name: controllers[0].text,
-                              phone: controllers[1].text,
-                              password: controllers[3].text,
-                              country: selectedCountry?.name ?? "",
-                              phoneCode: countryCode ?? '',
-                              email: controllers[2].text,
-                            );
-                            if (isChecked) {
+                            if (!isChecked) {
+                              GlobalFunction.showCustomSnackbar(
+                                message:
+                                    'Please accept the terms and conditions!',
+                                isSuccess: false,
+                              );
+                              return;
+                            }
+
+                            final email = controllers[2].text.trim();
+                            final password = controllers[3].text;
+                            final name = controllers[0].text.trim();
+                            final phone = controllers[1].text.trim();
+
+                            // Check if email is provided and use Firebase Auth
+                            if (email.isNotEmpty && email.contains('@')) {
+                              // Use Firebase Auth email/password registration
+                              ref
+                                  .read(authControllerProvider.notifier)
+                                  .signUpWithEmailPassword(
+                                    email: email,
+                                    password: password,
+                                    name: name,
+                                    phone: phone.isNotEmpty ? phone : null,
+                                  )
+                                  .then((response) {
+                                if (response.isSuccess) {
+                                  _navigate(ref: ref);
+                                } else {
+                                  GlobalFunction.showCustomSnackbar(
+                                    message: response.message,
+                                    isSuccess: false,
+                                  );
+                                }
+                              });
+                            } else {
+                              // Use existing phone/email registration
+                              final SingUp singUpInfo = SingUp(
+                                name: name,
+                                phone: phone,
+                                password: password,
+                                country: selectedCountry?.name ?? "",
+                                phoneCode: countryCode ?? '',
+                                email: email,
+                              );
                               ref
                                   .read(authControllerProvider.notifier)
                                   .singUp(singUpInfo: singUpInfo)
@@ -445,18 +481,102 @@ class _SignUpLayoutState extends State<SignUpLayout> {
                                   );
                                 }
                               });
-                            } else {
-                              GlobalFunction.showCustomSnackbar(
-                                message:
-                                    'Please accept the terms and conditions!',
-                                isSuccess: false,
-                              );
                             }
                           }
                         },
                       );
               }),
-            )
+            ),
+            Gap(20.h),
+            // Divider with "OR"
+            Row(
+              children: [
+                Expanded(
+                  child: Divider(
+                    color: colors(context).hintTextColor ?? EcommerceAppColor.lightGray,
+                    thickness: 1,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'OR',
+                    style: AppTextStyle(context).bodyText.copyWith(
+                          color: colors(context).hintTextColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: colors(context).hintTextColor ?? EcommerceAppColor.lightGray,
+                    thickness: 1,
+                  ),
+                ),
+              ],
+            ),
+            Gap(20.h),
+            // Google Sign-In Button
+            Consumer(builder: (context, ref, _) {
+              return ref.watch(authControllerProvider)
+                  ? const SizedBox.shrink()
+                  : SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          FocusScope.of(context).unfocus();
+                          if (!isChecked) {
+                            GlobalFunction.showCustomSnackbar(
+                              message: 'Please accept the terms and conditions!',
+                              isSuccess: false,
+                            );
+                            return;
+                          }
+                          ref
+                              .read(authControllerProvider.notifier)
+                              .signInWithGoogle()
+                              .then((response) {
+                            if (response.isSuccess) {
+                              _navigate(ref: ref);
+                            } else {
+                              GlobalFunction.showCustomSnackbar(
+                                message: response.message,
+                                isSuccess: false,
+                              );
+                            }
+                          });
+                        },
+                        icon: Image.asset(
+                          'assets/png/google_logo.png',
+                          width: 24.w,
+                          height: 24.h,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.login,
+                              size: 24.sp,
+                              color: Colors.grey[700],
+                            );
+                          },
+                        ),
+                        label: Text(
+                          'Continue with Google',
+                          style: AppTextStyle(context).buttonText.copyWith(
+                                color: colors(context).primaryColor,
+                              ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          side: BorderSide(
+                            color: colors(context).primaryColor ?? EcommerceAppColor.primary,
+                            width: 2,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                        ),
+                      ),
+                    );
+            })
           ],
         ),
       );
