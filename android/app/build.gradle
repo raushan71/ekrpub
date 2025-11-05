@@ -60,7 +60,7 @@ android {
     defaultConfig {
         applicationId "com.ekray.apps"
         multiDexEnabled = true
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 23  // Required by firebase_auth plugin
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
