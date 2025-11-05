@@ -225,53 +225,29 @@ class _LoginLayoutState extends State<LoginLayout> {
                       FocusScope.of(context).unfocus();
                       if (formKey.currentState!.validate()) {
                         final input = phoneController.text.trim();
-                        final isEmail = input.contains('@') && input.contains('.');
-
-                        if (isEmail) {
-                          // Use Firebase Auth email/password login
-                          ref
-                              .read(authControllerProvider.notifier)
-                              .signInWithEmailPassword(
-                                email: input,
-                                password: passwordController.text,
-                              )
-                              .then((response) {
-                            if (response.isSuccess) {
-                              ref
-                                  .read(addressControllerProvider.notifier)
-                                  .getAddress();
-                              context.nav.pushNamed(Routes.getCoreRouteName(
-                                  AppConstants.appServiceName));
-                            } else {
-                              GlobalFunction.showCustomSnackbar(
-                                message: response.message,
-                                isSuccess: false,
-                              );
-                            }
-                          });
-                        } else {
-                          // Use existing phone/password login
-                          ref
-                              .read(authControllerProvider.notifier)
-                              .login(
-                                phone: input,
-                                password: passwordController.text,
-                              )
-                              .then((response) {
-                            if (response.isSuccess) {
-                              ref
-                                  .read(addressControllerProvider.notifier)
-                                  .getAddress();
-                              context.nav.pushNamed(Routes.getCoreRouteName(
-                                  AppConstants.appServiceName));
-                            } else {
-                              GlobalFunction.showCustomSnackbar(
-                                message: response.message,
-                                isSuccess: false,
-                              );
-                            }
-                          });
-                        }
+                        
+                        // Use standard Laravel login API for both email and phone
+                        // Laravel backend accepts both email and phone in the "phone" field
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .login(
+                              phone: input,
+                              password: passwordController.text,
+                            )
+                            .then((response) {
+                          if (response.isSuccess) {
+                            ref
+                                .read(addressControllerProvider.notifier)
+                                .getAddress();
+                            context.nav.pushNamed(Routes.getCoreRouteName(
+                                AppConstants.appServiceName));
+                          } else {
+                            GlobalFunction.showCustomSnackbar(
+                              message: response.message,
+                              isSuccess: false,
+                            );
+                          }
+                        });
                       }
                     },
                   );

@@ -50,7 +50,7 @@ class AuthService implements AuthProviderBase {
     final response = await ref.read(apiClientProvider).post(
       AppConstants.loginUrl,
       data: {
-        "phone": phone,
+        "phone": phone, // Laravel backend accepts both email and phone in this field
         "password": password,
         "device_key": fcmToken,
         "device_type": Platform.isIOS ? 'ios' : 'android',
