@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:dio/dio.dart';
@@ -69,6 +70,17 @@ class FirebaseAuthService {
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw Exception(_getFirebaseAuthErrorMessage(e.code));
+    } on PlatformException catch (e) {
+      // Handle Google Sign-In platform-specific errors
+      String errorMessage = 'Google sign in failed';
+      if (e.code == 'sign_in_failed') {
+        errorMessage = 'Google Sign-In configuration error. Please ensure SHA-1 fingerprint is added to Firebase Console.';
+      } else if (e.code == 'sign_in_canceled') {
+        errorMessage = 'Google sign in was cancelled';
+      } else {
+        errorMessage = 'Google sign in error: ${e.message ?? e.code}';
+      }
+      throw Exception(errorMessage);
     } catch (e) {
       throw Exception('An unknown error occurred during Google sign in: $e');
     }
@@ -100,8 +112,29 @@ class FirebaseAuthService {
       return response;
     } on DioException catch (e) {
       debugPrint('Dio error linking with backend: ${e.response?.data}');
-      throw Exception(e.response?.data['message'] ?? 'Failed to link with backend');
+      
+      // Handle specific HTTP method errors
+      if (e.response?.statusCode == 405) {
+        throw Exception('Backend endpoint not configured. Please ensure POST route exists for /api/firebase-auth');
+      }
+      
+      // Handle error messages from backend
+      if (e.response?.data != null) {
+        final errorData = e.response!.data;
+        if (errorData is Map) {
+          final message = errorData['message'] ?? errorData['error'] ?? 'Failed to link with backend';
+          throw Exception(message);
+        }
+        if (errorData is String) {
+          throw Exception(errorData);
+        }
+      }
+      
+      throw Exception('Failed to connect to backend. Please check your internet connection.');
     } catch (e) {
+      if (e.toString().contains('POST method is not supported')) {
+        throw Exception('Backend endpoint not configured. Please ensure POST route exists for /api/firebase-auth');
+      }
       throw Exception('An unknown error occurred linking with backend: $e');
     }
   }
