@@ -100,24 +100,40 @@ public function firebaseAuth(Request $request)
         DB::beginTransaction();
         
         if ($user) {
-            // Update existing user
+            // Update existing user - PRESERVE EXISTING ROLE
             $user->update([
                 'firebase_uid' => $uid,
                 'name' => $name ?? $user->name,
                 'email' => $email ?? $user->email,
                 'phone' => $phone ?? $user->phone,
+                // Do NOT update role - preserve existing role
             ]);
+            
+            // If user has no role, assign default role
+            if (empty($user->role)) {
+                $user->update(['role' => 'customer']);
+            }
         } else {
-            // Create new user
+            // Create new user with default role
             $user = User::create([
                 'firebase_uid' => $uid,
                 'name' => $name,
                 'email' => $email,
                 'phone' => $phone,
                 'password' => Hash::make(uniqid()), // Random password since Firebase handles auth
-                'role' => 'customer', // Adjust based on your system
+                'role' => 'customer', // Default role - adjust based on your system
             ]);
         }
+        
+        // Optional: Verify user has required role before generating token
+        // Uncomment if you need to enforce role check
+        // $allowedRoles = ['customer', 'user'];
+        // if (!in_array($user->role, $allowedRoles)) {
+        //     DB::rollBack();
+        //     return response()->json([
+        //         'message' => 'User does not have the right role. Current role: ' . $user->role,
+        //     ], 403);
+        // }
         
         // Generate Sanctum token (or your existing auth token system)
         $token = $user->createToken('mobile-app')->plainTextToken;
