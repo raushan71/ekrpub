@@ -49,11 +49,11 @@ jobs:
             # Create key.properties file
             mkdir -p android
             cat > android/key.properties << EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=app/keystore/ekray-release-key.jks
-          EOF
+storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+keyPassword=${{ secrets.KEY_PASSWORD }}
+keyAlias=${{ secrets.KEY_ALIAS }}
+storeFile=app/keystore/ekray-release-key.jks
+EOF
             echo "✅ key.properties created"
           else
             echo "⚠️ Keystore not found in secrets, using debug signing"
