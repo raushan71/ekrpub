@@ -12,7 +12,28 @@
           "package_name": "com.ekray.apps"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "419311052239-5k85e0f49enjtolbdab7t94hlhk9o6rp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ekray.apps",
+            "certificate_hash": "9208b06ce8ebdb73c2d0a89e1900aff6bca76415"
+          }
+        },
+        {
+          "client_id": "419311052239-jaechpqi6s6d2t4rs6lefh35omrt8bqp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ekray.apps",
+            "certificate_hash": "bea90823a6adec76a99ff4339bbdf553515bc46c"
+          }
+        },
+        {
+          "client_id": "419311052239-9l06a4grckrbnav2889mmd251qg97ur1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBVDfUbrfE6z8bdUHtUFsz8eRCOO-nsdBY"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "419311052239-9l06a4grckrbnav2889mmd251qg97ur1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "419311052239-u3h3c4g72au71e3htj77empstbdhkckd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ekray.apps"
+              }
+            }
+          ]
         }
       }
     }
