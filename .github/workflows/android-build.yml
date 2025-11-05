@@ -38,20 +38,25 @@ jobs:
 
       - name: Setup Release Keystore
         if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          if [ -n "$KEYSTORE_BASE64" ]; then
             echo "🔐 Setting up release keystore..."
             mkdir -p android/app/keystore
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore/ekray-release-key.jks
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore/ekray-release-key.jks
             chmod 600 android/app/keystore/ekray-release-key.jks
             echo "✅ Keystore decoded successfully"
             
             # Create key.properties file
             mkdir -p android
             cat > android/key.properties << EOF
-storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-keyPassword=${{ secrets.KEY_PASSWORD }}
-keyAlias=${{ secrets.KEY_ALIAS }}
+storePassword=$KEYSTORE_PASSWORD
+keyPassword=$KEY_PASSWORD
+keyAlias=$KEY_ALIAS
 storeFile=app/keystore/ekray-release-key.jks
 EOF
             echo "✅ key.properties created"
