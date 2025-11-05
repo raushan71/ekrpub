@@ -45,65 +45,177 @@ Based on the error messages you're seeing:
 
 ### Step 3: Configure Laravel Backend
 
-Add this route to your Laravel `routes/api.php`:
+#### Add Route to `routes/api.php`:
+
+Add this route **before** the auth middleware routes (around line 50):
 
 ```php
-Route::post('/firebase-auth', [AuthController::class, 'firebaseAuth'])->name('firebase.auth');
+// Firebase Auth route (add this before auth middleware)
+Route::controller(AuthController::class)->group(function () {
+    Route::post('/firebase-auth', 'firebaseAuth');
+});
 ```
 
-Add this method to your `AuthController`:
+#### Add Method to `App\Http\Controllers\API\Auth\AuthController`:
+
+Add this method to your existing `AuthController`:
 
 ```php
+/**
+ * Handle Firebase Authentication
+ */
 public function firebaseAuth(Request $request)
 {
-    $request->validate([
+    $validator = Validator::make($request->all(), [
         'firebase_id_token' => 'required|string',
-        'name' => 'nullable|string',
-        'email' => 'nullable|email',
-        'phone' => 'nullable|string',
+        'name' => 'nullable|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'phone' => 'nullable|string|max:20',
     ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
 
     try {
         // Verify Firebase ID token
-        $firebaseAuth = app('firebase.auth');
+        $firebaseAuth = Firebase::auth();
         $verifiedIdToken = $firebaseAuth->verifyIdToken($request->firebase_id_token);
         $uid = $verifiedIdToken->claims()->get('sub');
         
-        // Get or create user
-        $user = User::firstOrCreate(
-            ['firebase_uid' => $uid],
-            [
-                'name' => $request->name ?? 'User',
-                'email' => $request->email,
-                'phone' => $request->phone,
-            ]
-        );
-
-        // Generate access token (using your existing auth system)
-        $token = $user->createToken('mobile-app')->accessToken;
-
+        // Get user info from Firebase token
+        $firebaseUser = $firebaseAuth->getUser($uid);
+        $email = $request->email ?? $firebaseUser->email ?? null;
+        $name = $request->name ?? $firebaseUser->displayName ?? 'User';
+        $phone = $request->phone ?? $firebaseUser->phoneNumber ?? null;
+        
+        // Check if user exists by email or Firebase UID
+        $user = User::where('email', $email)
+            ->orWhere('firebase_uid', $uid)
+            ->first();
+        
+        DB::beginTransaction();
+        
+        if ($user) {
+            // Update existing user
+            $user->update([
+                'firebase_uid' => $uid,
+                'name' => $name ?? $user->name,
+                'email' => $email ?? $user->email,
+                'phone' => $phone ?? $user->phone,
+            ]);
+        } else {
+            // Create new user
+            $user = User::create([
+                'firebase_uid' => $uid,
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'password' => Hash::make(uniqid()), // Random password since Firebase handles auth
+                'role' => 'customer', // Adjust based on your system
+            ]);
+        }
+        
+        // Generate Sanctum token (or your existing auth token system)
+        $token = $user->createToken('mobile-app')->plainTextToken;
+        
+        DB::commit();
+        
         return response()->json([
             'message' => 'Authentication successful',
             'data' => [
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'firebase_uid' => $user->firebase_uid,
+                ],
                 'access' => [
                     'token' => $token,
                 ],
             ],
         ], 200);
+        
+    } catch (\Kreait\Firebase\Exception\Auth\InvalidToken $e) {
+        return response()->json([
+            'message' => 'Invalid Firebase token: ' . $e->getMessage(),
+        ], 401);
     } catch (\Exception $e) {
+        DB::rollBack();
         return response()->json([
             'message' => 'Authentication failed: ' . $e->getMessage(),
-        ], 401);
+        ], 500);
     }
 }
 ```
 
-### Step 4: Install Firebase Admin SDK in Laravel (if not already installed)
+#### Add Required Imports to AuthController:
+
+Make sure these imports are at the top of your `AuthController.php`:
+
+```php
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Kreait\Laravel\Firebase\Facades\Firebase;
+```
+
+### Step 4: Database Migration
+
+Add `firebase_uid` column to your `users` table:
+
+```bash
+php artisan make:migration add_firebase_uid_to_users_table
+```
+
+In the migration file:
+
+```php
+public function up()
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->string('firebase_uid')->nullable()->unique()->after('id');
+    });
+}
+
+public function down()
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('firebase_uid');
+    });
+}
+```
+
+Run migration:
+```bash
+php artisan migrate
+```
+
+### Step 5: Install Firebase Admin SDK (if not already installed)
 
 ```bash
 composer require kreait/firebase-php
 ```
+
+Or if using Laravel Firebase package:
+
+```bash
+composer require kreait/laravel-firebase
+```
+
+Publish config:
+
+```bash
+php artisan vendor:publish --provider="Kreait\Laravel\Firebase\ServiceProvider" --tag="config"
+```
+
+Configure Firebase credentials in `.env` or `config/firebase.php`.
 
 ## Testing
 
@@ -119,4 +231,40 @@ The app now provides clearer error messages:
 - Google Sign-In errors will indicate configuration issues
 - Backend errors will indicate if the route is missing
 - Network errors will be clearly identified
+
+## Response Format
+
+Success response (200):
+```json
+{
+  "message": "Authentication successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Test User",
+      "email": "test@example.com",
+      "phone": null,
+      "firebase_uid": "firebase_uid_here"
+    },
+    "access": {
+      "token": "sanctum_token_here"
+    }
+  }
+}
+```
+
+Error response (401/422/500):
+```json
+{
+  "message": "Error message here"
+}
+```
+
+## Important Notes
+
+1. **Firebase UID:** Store Firebase UID to link Firebase users with Laravel users
+2. **Password:** Since Firebase handles authentication, you can set a random password for Laravel users
+3. **Email/Phone:** Use email or phone from Firebase token if not provided in request
+4. **Role:** Set default role to 'customer' (adjust based on your system)
+5. **Token System:** Adjust token generation based on your auth system (Sanctum/Passport/JWT)
 
