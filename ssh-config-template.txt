@@ -1,0 +1,37 @@
+# VPS SSH Configuration Template
+# Copy this to ~/.ssh/config (Windows: C:\Users\YourName\.ssh\config)
+
+# Production VPS Server
+Host vps
+    HostName YOUR_VPS_IP_OR_DOMAIN
+    User YOUR_SSH_USERNAME
+    Port 22
+    IdentityFile ~/.ssh/vps_deploy_key
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    StrictHostKeyChecking no
+    UserKnownHostsFile ~/.ssh/known_hosts
+
+# Alternative: Use IP directly
+# Host vps-production
+#     HostName 123.456.789.0
+#     User root
+#     Port 22
+#     IdentityFile ~/.ssh/vps_deploy_key
+#     ServerAliveInterval 60
+
+# Staging Server (if you have one)
+# Host vps-staging
+#     HostName staging.YOUR_DOMAIN.com
+#     User deploy
+#     Port 22
+#     IdentityFile ~/.ssh/vps_deploy_key
+#     ServerAliveInterval 60
+
+# Instructions:
+# 1. Replace YOUR_VPS_IP_OR_DOMAIN with your actual VPS IP or domain
+# 2. Replace YOUR_SSH_USERNAME with your SSH username (usually 'root' or your username)
+# 3. Update IdentityFile path if you used a different key name
+# 4. Save this file as ~/.ssh/config (Windows: C:\Users\YourName\.ssh\config)
+# 5. Test connection: ssh vps
+
