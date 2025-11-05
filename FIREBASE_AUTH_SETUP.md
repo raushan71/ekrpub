@@ -268,3 +268,34 @@ Error response (401/422/500):
 4. **Role:** Set default role to 'customer' (adjust based on your system)
 5. **Token System:** Adjust token generation based on your auth system (Sanctum/Passport/JWT)
 
+## Common Backend Errors
+
+### Error: Firebase Credentials File Not Found
+
+**Error Message:**
+```
+SplFileObject::__construct(.../firebase_credentials.json): Failed to open stream: No such file or directory
+```
+
+**Solution:** 
+1. Download Firebase Service Account JSON from Firebase Console
+2. Upload it to your VPS: `/home/ekray/htdocs/ekray.com/storage/app/public/firebase_credentials.json`
+3. Set proper permissions: `chmod 600` and `chown www-data:www-data`
+
+See `FIREBASE_VPS_SETUP.md` for detailed instructions.
+
+### Error: Google Sign-In Configuration Error
+
+**Error Message:**
+```
+Google Sign-In configuration error. Please ensure SHA-1 fingerprint is added to Firebase Console.
+```
+
+**Solution:** 
+1. Get SHA-1 fingerprint (see Step 1 above)
+2. Add it to Firebase Console → Project Settings → Your Android App
+3. Download updated `google-services.json`
+4. Replace in your Flutter app
+
+See Step 1 and Step 2 in this guide for details.
+
