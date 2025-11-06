@@ -98,6 +98,8 @@ class FirebaseAuthService {
     String? name,
     String? email,
     String? phone,
+    String? deviceKey,
+    String? deviceType,
   }) async {
     try {
       final response = await ref.read(apiClientProvider).post(
@@ -107,6 +109,8 @@ class FirebaseAuthService {
           if (name != null) 'name': name,
           if (email != null) 'email': email,
           if (phone != null) 'phone': phone,
+          if (deviceKey != null) 'device_key': deviceKey,
+          if (deviceType != null) 'device_type': deviceType,
         },
       );
       return response;

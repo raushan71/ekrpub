@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:ekray/models/eCommerce/authentication/sign_up.dart';
 import 'package:ekray/models/eCommerce/authentication/user.dart';
 import 'package:ekray/models/eCommerce/common/common_response.dart';
@@ -212,13 +213,26 @@ class AuthController extends StateNotifier<bool> {
         );
       }
 
-      // Link with Laravel backend
+      // Get FCM token for device registration
+      String? fcmToken;
+      String? deviceType;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+        deviceType = Platform.isIOS ? 'ios' : 'android';
+        debugPrint('FCM Token for Firebase sign up: $fcmToken');
+      } catch (e) {
+        debugPrint('Failed to get FCM token: $e');
+      }
+
+      // Link with Laravel backend (include device key)
       final response = await ref.read(firebaseAuthServiceProvider)
           .linkWithLaravelBackend(
         firebaseIdToken: firebaseIdToken,
         name: name,
         email: email,
         phone: phone,
+        deviceKey: fcmToken,
+        deviceType: deviceType,
       );
 
       final String message = response.data['message'] ?? 'Registration successful';
@@ -268,11 +282,24 @@ class AuthController extends StateNotifier<bool> {
         );
       }
 
-      // Link with Laravel backend
+      // Get FCM token for device registration
+      String? fcmToken;
+      String? deviceType;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+        deviceType = Platform.isIOS ? 'ios' : 'android';
+        debugPrint('FCM Token for Firebase sign in: $fcmToken');
+      } catch (e) {
+        debugPrint('Failed to get FCM token: $e');
+      }
+
+      // Link with Laravel backend (include device key)
       final response = await ref.read(firebaseAuthServiceProvider)
           .linkWithLaravelBackend(
         firebaseIdToken: firebaseIdToken,
         email: email,
+        deviceKey: fcmToken,
+        deviceType: deviceType,
       );
 
       final String message = response.data['message'] ?? 'Login successful';
@@ -305,6 +332,18 @@ class AuthController extends StateNotifier<bool> {
     try {
       state = true;
 
+      // Get FCM token for device registration
+      String? fcmToken;
+      String? deviceType;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+        deviceType = Platform.isIOS ? 'ios' : 'android';
+        debugPrint('FCM Token for Google login: $fcmToken');
+      } catch (e) {
+        debugPrint('Failed to get FCM token: $e');
+        // Continue without device key if FCM token fails
+      }
+
       // Sign in with Google
       final userCredential = await ref.read(firebaseAuthServiceProvider)
           .signInWithGoogle();
@@ -328,13 +367,15 @@ class AuthController extends StateNotifier<bool> {
         );
       }
 
-      // Link with Laravel backend
+      // Link with Laravel backend (include device key)
       final response = await ref.read(firebaseAuthServiceProvider)
           .linkWithLaravelBackend(
         firebaseIdToken: firebaseIdToken,
         name: firebaseUser.displayName,
         email: firebaseUser.email,
         phone: firebaseUser.phoneNumber,
+        deviceKey: fcmToken,
+        deviceType: deviceType,
       );
 
       // Check for 403 or other error status codes
