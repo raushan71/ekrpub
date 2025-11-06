@@ -13,6 +13,7 @@ class AppConstants {
   static const String resetPassword = '$baseUrl/reset-password';
   static const String changePassword = '$baseUrl/change-password';
   static const String updateProfile = '$baseUrl/update-profile';
+  static const String updateDeviceKey = '$baseUrl/update-device-key';
   static const String getDashboardData = '$baseUrl/home';
   static const String getCategories = '$baseUrl/categories';
   static const String getSubCategories = '$baseUrl/sub-categories';

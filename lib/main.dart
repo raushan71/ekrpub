@@ -28,6 +28,12 @@ void main() async {
   firebaseMessagingForgroundHandler();
   String? fcmToken = await FirebaseMessaging.instance.getToken();
   debugPrint("FCM Token: $fcmToken");
+  
+  // Listen for token refresh and update on backend
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    debugPrint("FCM Token refreshed: $newToken");
+    // Token will be updated on next login or can be updated via updateDeviceKey endpoint
+  });
   await FlutterDownloader.initialize(
     debug: true,
     ignoreSsl: false,

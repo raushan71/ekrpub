@@ -20,5 +20,6 @@ abstract class AuthProviderBase {
     required String confirmNewPassword,
   });
   Future<Response> updateProfile({required User userInfo, required File? file});
+  Future<Response> updateDeviceKey({required String deviceKey, required String deviceType});
   Future<Response> logout();
 }

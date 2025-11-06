@@ -129,4 +129,19 @@ class AuthService implements AuthProviderBase {
         .post(AppConstants.updateProfile, data: formData);
     return response;
   }
+
+  @override
+  Future<Response> updateDeviceKey({
+    required String deviceKey,
+    required String deviceType,
+  }) async {
+    final response = await ref.read(apiClientProvider).post(
+      AppConstants.updateDeviceKey,
+      data: {
+        'device_key': deviceKey,
+        'device_type': deviceType,
+      },
+    );
+    return response;
+  }
 }
