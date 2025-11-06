@@ -58,7 +58,7 @@ class PusherController extends StateNotifier<void> {
         if (decoded["message"] != null) {
           final message = Messages.fromMap(decoded["message"]);
           debugPrint("✅ Parsed message: ${message.toMap()}");
-          debugPrint("📝 Message type: ${message.type}, Shop ID: ${message.shopId}, User ID: ${message.userId}");
+          debugPrint("📝 Message type: ${message.type}, Shop ID: ${message.shop?.id}, User ID: ${message.user?.id}");
 
           // Add message to the current chat if it matches the active shop
           // We need to get the current shop ID from context, but for now add to all
