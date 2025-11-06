@@ -34,11 +34,18 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize Pusher for real-time messages
       ref.read(pusherControllerProvider.notifier).init();
+      
+      // Load initial messages
       ref
           .read(getMessageControllerProvider.notifier)
           .getMessage(shopId: widget.shop.id ?? 0, isInitial: true);
-      _scrollToBottom();
+      
+      // Scroll to bottom after a delay to ensure messages are loaded
+      Future.delayed(Duration(milliseconds: 300), () {
+        _scrollToBottom();
+      });
     });
 
     _scrollController.addListener(() {
@@ -49,6 +56,21 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
             );
       }
     });
+    
+    // Listen for new messages and scroll to bottom when they arrive
+    ref.listen<AsyncValue<List<Messages>>>(
+      getMessageControllerProvider,
+      (previous, next) {
+        next.whenData((messages) {
+          if (messages.isNotEmpty) {
+            // Scroll to bottom when new messages arrive (from Pusher)
+            Future.delayed(Duration(milliseconds: 100), () {
+              _scrollToBottom();
+            });
+          }
+        });
+      },
+    );
   }
 
   void _scrollToBottom() {
@@ -244,20 +266,39 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
                                           type: "user",
                                           message: messageController.text,
                                           user: users);
+                                      // Optimistically add message to UI
                                       ref
                                           .read(getMessageControllerProvider
                                               .notifier)
-                                          .addNewMessage(messageModel)
-                                          .then((val) async {
-                                        messageController.clear();
-                                        await ref
-                                            .read(sendMessageControllerProvider
-                                                .notifier)
-                                            .sendMessage(
-                                              shopId: widget.shop.id ?? 0,
-                                              message: messageText,
-                                            );
-                                      });
+                                          .addNewMessage(messageModel);
+                                      messageController.clear();
+                                      
+                                      // Send message to backend
+                                      final result = await ref
+                                          .read(sendMessageControllerProvider
+                                              .notifier)
+                                          .sendMessage(
+                                            shopId: widget.shop.id ?? 0,
+                                            message: messageText,
+                                          );
+                                      
+                                      // Show error if message failed to send
+                                      if (!result.isSuccess && mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(result.message ?? 'Failed to send message'),
+                                            backgroundColor: Colors.red,
+                                            duration: Duration(seconds: 3),
+                                          ),
+                                        );
+                                        // Remove the optimistic message if send failed
+                                        // Refresh messages to get correct state
+                                        ref.read(getMessageControllerProvider.notifier)
+                                            .getMessage(shopId: widget.shop.id ?? 0, isInitial: true);
+                                      } else {
+                                        // Scroll to bottom after sending
+                                        _scrollToBottom();
+                                      }
                                     }
                                   },
                                 ),

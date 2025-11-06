@@ -42,23 +42,44 @@ class PusherController extends StateNotifier<void> {
 
   /// Handle incoming events
   void _handleEvent(PusherEvent event) {
-    debugPrint("Event: ${event.eventName}");
-    debugPrint("Data: ${event.data}");
+    debugPrint("🔔 Pusher Event: ${event.eventName}");
+    debugPrint("📦 Event Data: ${event.data}");
 
     try {
       if (event.data.isEmpty) {
-        debugPrint("No data received");
+        debugPrint("⚠️ No data received in event");
         return;
       }
+      
       final decoded = jsonDecode(event.data);
-      final message = Messages.fromMap(decoded["message"]);
-      debugPrint("Parsed message: ${message.toMap()}");
+      
+      // Handle both event types: send-message-to-user and send-message-to-shop
+      if (event.eventName == 'send-message-to-user' || event.eventName == 'send-message-to-shop') {
+        if (decoded["message"] != null) {
+          final message = Messages.fromMap(decoded["message"]);
+          debugPrint("✅ Parsed message: ${message.toMap()}");
+          debugPrint("📝 Message type: ${message.type}, Shop ID: ${message.shopId}, User ID: ${message.userId}");
 
-      ref.read(getMessageControllerProvider.notifier).addNewMessage(message);
-      ref.read(getShopsControllerProvider.notifier).getShops();
-      ref.refresh(getTotalUnreadMessagesControllerProvider);
+          // Add message to the current chat if it matches the active shop
+          // We need to get the current shop ID from context, but for now add to all
+          ref.read(getMessageControllerProvider.notifier).addNewMessage(message);
+          
+          // Refresh shop list to update last message
+          ref.read(getShopsControllerProvider.notifier).getShops();
+          
+          // Refresh unread messages count
+          ref.refresh(getTotalUnreadMessagesControllerProvider);
+          
+          debugPrint("✅ Message added to UI via Pusher");
+        } else {
+          debugPrint("⚠️ No message data in event payload");
+        }
+      } else {
+        debugPrint("ℹ️ Unhandled event type: ${event.eventName}");
+      }
     } catch (e, stk) {
-      debugPrint("Error parsing message: $e | $stk");
+      debugPrint("❌ Error parsing Pusher message: $e");
+      debugPrint("📚 Stack trace: $stk");
       return;
     }
   }

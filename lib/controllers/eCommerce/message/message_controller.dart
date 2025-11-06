@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ekray/models/eCommerce/common/common_response.dart';
@@ -65,14 +66,55 @@ class SendMessageController extends StateNotifier<bool> {
       final response = await ref
           .read(messageServiceProvider)
           .sendMessage(shopId: shopId, message: message, type: "user");
-      state = false;
-      return CommonResponse(isSuccess: true, message: response.data['message']);
-    } catch (error) {
-      debugPrint(error.toString());
+      
+      // Check response status
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        state = false;
+        // Refresh messages to get the latest from server
+        ref.read(getMessageControllerProvider.notifier).getMessage(shopId: shopId, isInitial: true);
+        return CommonResponse(
+          isSuccess: true, 
+          message: response.data['message'] ?? 'Message sent successfully'
+        );
+      } else {
+        state = false;
+        final errorMessage = response.data['message'] ?? 'Failed to send message';
+        return CommonResponse(isSuccess: false, message: errorMessage);
+      }
+    } on DioException catch (e) {
+      debugPrint('Dio error sending message: ${e.response?.statusCode} - ${e.response?.data}');
       if (mounted) {
         state = false;
       }
-      return CommonResponse(isSuccess: false, message: error.toString());
+      
+      String errorMessage = 'Failed to send message';
+      if (e.response?.data != null) {
+        final errorData = e.response!.data;
+        if (errorData is Map) {
+          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+        } else if (errorData is String) {
+          errorMessage = errorData;
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout || 
+                 e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = 'No internet connection. Please check your network.';
+      }
+      
+      return CommonResponse(isSuccess: false, message: errorMessage);
+    } catch (error) {
+      debugPrint('Error sending message: $error');
+      if (mounted) {
+        state = false;
+      }
+      String errorMessage = 'An unknown error occurred while sending message';
+      if (error.toString().contains('SocketException')) {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (error.toString().isNotEmpty) {
+        errorMessage = error.toString().replaceAll('Exception: ', '');
+      }
+      return CommonResponse(isSuccess: false, message: errorMessage);
     }
   }
 
