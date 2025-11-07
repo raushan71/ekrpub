@@ -61,31 +61,37 @@ class PusherController extends StateNotifier<void> {
           debugPrint("✅ Parsed message: ${message.toMap()}");
           debugPrint("📝 Message type: ${message.type}, Shop ID: ${message.shop?.id}, User ID: ${message.user?.id}");
 
-          // Add message to the current chat if it matches the active shop
-          // We need to get the current shop ID from context, but for now add to all
-          ref.read(getMessageControllerProvider.notifier).addNewMessage(message);
+          // Only add message if it's from a shop (type == 'shop')
+          // For user messages, they're sent by the user themselves
+          if (message.type == 'shop') {
+            // Add message to the current chat - it will be filtered by shop ID in the UI
+            ref.read(getMessageControllerProvider.notifier).addNewMessage(message);
+            debugPrint("✅ Message added to UI via Pusher (shop message)");
+          }
           
-          // Refresh shop list to update last message
+          // Refresh shop list to update last message (always, for all message types)
           ref.read(getShopsControllerProvider.notifier).getShops();
           
           // Refresh unread messages count
           ref.refresh(getTotalUnreadMessagesControllerProvider);
-          
-          debugPrint("✅ Message added to UI via Pusher");
         } else {
           debugPrint("⚠️ No message data in event payload");
         }
       } else if (event.eventName == 'typing-indicator') {
         // Handle typing indicator from shop
-        if (decoded["type"] == "shop" && decoded["is_typing"] != null) {
+        // When shop types, type == "shop" and it's broadcast to user's channel
+        if (decoded["type"] == "shop" && decoded["is_typing"] != null && decoded["shop_id"] != null) {
           final isTyping = decoded["is_typing"] as bool;
           final shopId = decoded["shop_id"] as int?;
-          debugPrint("📝 Typing indicator: shop=$shopId, typing=$isTyping");
+          debugPrint("📝 Typing indicator received: shop=$shopId, typing=$isTyping, type=${decoded["type"]}");
           
-          // Update typing indicator provider
+          // Update typing indicator provider for the specific shop
           if (shopId != null) {
             ref.read(typingIndicatorStateProvider.notifier).setTyping(shopId, isTyping);
+            debugPrint("✅ Typing indicator updated for shop: $shopId = $isTyping");
           }
+        } else {
+          debugPrint("⚠️ Typing indicator data incomplete: ${decoded}");
         }
       } else {
         debugPrint("ℹ️ Unhandled event type: ${event.eventName}");

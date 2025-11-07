@@ -33,6 +33,7 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> with WidgetsBinding
   final _formKey = GlobalKey<FormState>();
   final ScrollController _scrollController = ScrollController();
   Timer? _typingTimer;
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -119,25 +120,42 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> with WidgetsBinding
   
   void _onTextChanged() {
     final text = messageController.text;
-    if (text.isNotEmpty) {
-      _sendTypingIndicator(true);
-      // Reset timer
+    if (text.isNotEmpty && text.trim().isNotEmpty) {
+      // Send typing indicator immediately
+      if (!_isTyping) {
+        _isTyping = true;
+        _sendTypingIndicator(true);
+      }
+      
+      // Cancel previous timer and set new one
       _typingTimer?.cancel();
       _typingTimer = Timer(Duration(seconds: 3), () {
+        _isTyping = false;
         _sendTypingIndicator(false);
       });
     } else {
-      _sendTypingIndicator(false);
+      // Stop typing when text is empty
+      if (_isTyping) {
+        _isTyping = false;
+        _sendTypingIndicator(false);
+      }
       _typingTimer?.cancel();
     }
   }
   
   void _sendTypingIndicator(bool isTyping) async {
     try {
+      if (widget.shop.id == null || widget.shop.id == 0) {
+        debugPrint('⚠️ Cannot send typing indicator: invalid shop ID');
+        return;
+      }
+      
+      debugPrint('📤 Sending typing indicator: shop=${widget.shop.id}, typing=$isTyping');
       await ref.read(messageServiceProvider).sendTypingIndicator(
-        shopId: widget.shop.id ?? 0,
+        shopId: widget.shop.id!,
         isTyping: isTyping,
       );
+      debugPrint('✅ Typing indicator sent successfully');
     } catch (e) {
       debugPrint('❌ Error sending typing indicator: $e');
     }
@@ -404,6 +422,7 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> with WidgetsBinding
                                           message: messageController.text,
                                           user: users);
                                       // Stop typing indicator when sending
+                                      _isTyping = false;
                                       _sendTypingIndicator(false);
                                       _typingTimer?.cancel();
                                       

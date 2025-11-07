@@ -140,8 +140,11 @@ class GetMessageController extends StateNotifier<AsyncValue<List<Messages>>> {
   final int _perPage = 20;
   bool _hasMore = true;
   bool _isFetching = false;
+  int? _currentShopId; // Track current shop ID for filtering messages
 
   Future<void> getMessage({required int shopId, bool isInitial = false}) async {
+    // Update current shop ID
+    _currentShopId = shopId;
     if (_isFetching || (!_hasMore && !isInitial)) return;
 
     try {
@@ -178,11 +181,38 @@ class GetMessageController extends StateNotifier<AsyncValue<List<Messages>>> {
   }
 
   Future<void> addNewMessage(Messages newMessage) async {
-    final currentState = state.value ?? [];
-    state = AsyncValue.data([
-      newMessage,
-      ...currentState,
-    ]);
+    // Only add message if it matches the current shop
+    // Check if message is from the current shop (type == 'shop' means shop sent it to user)
+    if (newMessage.type == 'shop' && newMessage.shop?.id != null) {
+      // Only add if we're viewing this shop's chat
+      if (_currentShopId != null && newMessage.shop!.id == _currentShopId) {
+        final currentState = state.value ?? [];
+        // Check if message already exists (avoid duplicates)
+        final messageExists = currentState.any((msg) => msg.id == newMessage.id);
+        if (!messageExists) {
+          state = AsyncValue.data([
+            newMessage,
+            ...currentState,
+          ]);
+          debugPrint("✅ New message added to chat for shop: ${newMessage.shop!.id}");
+        } else {
+          debugPrint("⚠️ Message already exists, skipping: ${newMessage.id}");
+        }
+      } else {
+        debugPrint("⚠️ Message from different shop (${newMessage.shop?.id}), current shop: $_currentShopId");
+      }
+    } else if (newMessage.type == 'user') {
+      // User messages are sent by the user themselves, so always add them
+      final currentState = state.value ?? [];
+      final messageExists = currentState.any((msg) => msg.id == newMessage.id);
+      if (!messageExists) {
+        state = AsyncValue.data([
+          newMessage,
+          ...currentState,
+        ]);
+        debugPrint("✅ New user message added to chat");
+      }
+    }
   }
 }
 
