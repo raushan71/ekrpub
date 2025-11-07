@@ -6,6 +6,7 @@ import 'package:ekray/firebase_options.dart';
 import 'package:ekray/routes.dart';
 import 'package:ekray/utils/global_function.dart';
 import 'package:ekray/config/app_constants.dart';
+import 'package:ekray/models/eCommerce/shop_message_model/shop.dart';
 
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -152,10 +153,25 @@ Future<void> onSelectNotification(
     debugPrint('Local notification clicked with payload: $payload');
     try {
       // Try to parse as JSON map (data format from Firebase)
-      // Payload format: {link: 123, click_action: FLUTTER_NOTIFICATION_CLICK}
-      if (payload.contains('link') || payload.contains('product')) {
-        // Extract link/product ID from payload string
+      // Payload format: {link: chat:1, click_action: FLUTTER_NOTIFICATION_CLICK}
+      if (payload.contains('link')) {
+        // Extract link from payload string
         final linkMatch = RegExp(r'link[:\s]+([^\s,}]+)').firstMatch(payload);
+        if (linkMatch != null) {
+          final link = linkMatch.group(1)?.replaceAll("'", '').replaceAll('"', '').trim();
+          if (link != null && link.isNotEmpty) {
+            // Check if it's a chat link
+            if (link.startsWith('chat:')) {
+              _navigateToChat(link);
+            } else {
+              // Otherwise, treat as product link
+              _navigateToProduct(link);
+            }
+          }
+        }
+      } else if (payload.contains('product')) {
+        // Extract product ID from payload string
+        final linkMatch = RegExp(r'product[:\s]+([^\s,}]+)').firstMatch(payload);
         if (linkMatch != null) {
           final link = linkMatch.group(1)?.replaceAll("'", '').replaceAll('"', '').trim();
           if (link != null && link.isNotEmpty) {
@@ -165,6 +181,49 @@ Future<void> onSelectNotification(
       }
     } catch (e) {
       debugPrint('Error parsing notification payload: $e');
+    }
+  }
+}
+
+// Helper function to navigate to chat
+void _navigateToChat(String link) {
+  String linkStr = link.trim();
+  
+  // Check if it's a chat link (format: chat:shop_id)
+  if (linkStr.startsWith('chat:')) {
+    final chatId = linkStr.replaceFirst('chat:', '').trim();
+    final shopId = int.tryParse(chatId);
+    
+    if (shopId != null && shopId > 0) {
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        try {
+          // Import Shop model (already imported at top of file via routes.dart)
+          final shop = Shop(
+            id: shopId,
+            name: null,
+            logo: null,
+            rating: null,
+            lastOnline: null,
+          );
+          
+          GlobalFunction.navigatorKey.currentState?.pushNamed(
+            Routes.getChatViewRouteName(AppConstants.appServiceName),
+            arguments: shop,
+          );
+          debugPrint('✅ Navigated to chat from local notification: $shopId');
+        } catch (e) {
+          debugPrint('❌ Error navigating to chat: $e');
+          // Fallback: navigate to messages list
+          try {
+            GlobalFunction.navigatorKey.currentState?.pushNamed(
+              Routes.getMyMessageViewRouteName(AppConstants.appServiceName),
+            );
+            debugPrint('✅ Navigated to messages list as fallback');
+          } catch (fallbackError) {
+            debugPrint('❌ Error navigating to messages list: $fallbackError');
+          }
+        }
+      });
     }
   }
 }

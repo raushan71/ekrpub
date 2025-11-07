@@ -17,6 +17,7 @@ import 'package:ekray/routes.dart';
 import 'package:ekray/utils/global_function.dart';
 import 'package:ekray/utils/notification_handler.dart';
 import 'package:ekray/views/common/splash/layouts/splash_layout.dart';
+import 'package:ekray/models/eCommerce/shop_message_model/shop.dart';
 import 'dart:io';
 
 // Request notification permissions at app startup
@@ -53,30 +54,53 @@ void _handleNotificationNavigation(RemoteMessage message) {
   if (link != null && link.toString().isNotEmpty) {
     String linkStr = link.toString().trim();
     
-    // Check if it's a chat notification (format: chat:shop_id or chat:user_id)
+    // Check if it's a chat notification (format: chat:shop_id)
     if (linkStr.startsWith('chat:')) {
-      // Chat notification - navigate to messages/chat
+      // Chat notification - navigate to chat screen
       final chatId = linkStr.replaceFirst('chat:', '').trim();
       final shopId = int.tryParse(chatId);
       
       if (shopId != null && shopId > 0) {
-        Future.delayed(const Duration(milliseconds: 1000), () {
+        // Wait for app to be ready, then navigate
+        Future.delayed(const Duration(milliseconds: 1500), () async {
           final navigator = GlobalFunction.navigatorKey.currentState;
           if (navigator != null) {
             try {
-              // Navigate to messages page with shop ID
-              // You may need to adjust this based on your routes
-              navigator.pushNamed(
-                '/messages', // Adjust route name as needed
-                arguments: {'shopId': shopId},
+              // Create a minimal Shop object with the shop ID
+              // The chat screen will use this ID to fetch messages
+              final shop = Shop(
+                id: shopId,
+                name: null, // Will be loaded by the chat screen if needed
+                logo: null,
+                rating: null,
+                lastOnline: null,
               );
-              debugPrint('✅ Navigated to chat with shop: $shopId');
+              
+              // Navigate to chat view route with Shop object
+              navigator.pushNamed(
+                Routes.getChatViewRouteName(AppConstants.appServiceName),
+                arguments: shop,
+              );
+              debugPrint('✅ Navigated to chat with shop ID: $shopId');
             } catch (e) {
               debugPrint('❌ Error navigating to chat: $e');
+              // Fallback: navigate to messages list page
+              try {
+                navigator.pushNamed(
+                  Routes.getMyMessageViewRouteName(AppConstants.appServiceName),
+                );
+                debugPrint('✅ Navigated to messages list as fallback');
+              } catch (fallbackError) {
+                debugPrint('❌ Error navigating to messages list: $fallbackError');
+              }
             }
+          } else {
+            debugPrint('⚠️ Navigator not ready yet');
           }
         });
         return;
+      } else {
+        debugPrint('⚠️ Invalid shop ID in chat link: $chatId');
       }
     }
     
