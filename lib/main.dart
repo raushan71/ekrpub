@@ -51,9 +51,37 @@ void _handleNotificationNavigation(RemoteMessage message) {
   final link = data['link'] ?? data['product_link'] ?? data['url'] ?? data['product_id'];
   
   if (link != null && link.toString().isNotEmpty) {
+    String linkStr = link.toString().trim();
+    
+    // Check if it's a chat notification (format: chat:shop_id or chat:user_id)
+    if (linkStr.startsWith('chat:')) {
+      // Chat notification - navigate to messages/chat
+      final chatId = linkStr.replaceFirst('chat:', '').trim();
+      final shopId = int.tryParse(chatId);
+      
+      if (shopId != null && shopId > 0) {
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          final navigator = GlobalFunction.navigatorKey.currentState;
+          if (navigator != null) {
+            try {
+              // Navigate to messages page with shop ID
+              // You may need to adjust this based on your routes
+              navigator.pushNamed(
+                '/messages', // Adjust route name as needed
+                arguments: {'shopId': shopId},
+              );
+              debugPrint('✅ Navigated to chat with shop: $shopId');
+            } catch (e) {
+              debugPrint('❌ Error navigating to chat: $e');
+            }
+          }
+        });
+        return;
+      }
+    }
+    
     // Parse product ID from link
     // Link format: /product/{id} or https://ekray.com/product/{id} or just product ID
-    String linkStr = link.toString().trim();
     int? productId;
     
     // Extract product ID from various link formats
@@ -95,10 +123,22 @@ void _handleNotificationNavigation(RemoteMessage message) {
         }
       });
     } else {
-      debugPrint('⚠️ Could not parse product ID from link: $link');
+      debugPrint('⚠️ Could not parse product ID or chat ID from link: $link');
     }
   } else {
-    debugPrint('ℹ️ No link found in notification data');
+    // No link - might be a chat notification, navigate to messages
+    debugPrint('ℹ️ No link found in notification data, assuming chat notification');
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      final navigator = GlobalFunction.navigatorKey.currentState;
+      if (navigator != null) {
+        try {
+          navigator.pushNamed('/messages'); // Navigate to messages page
+          debugPrint('✅ Navigated to messages page');
+        } catch (e) {
+          debugPrint('❌ Error navigating to messages: $e');
+        }
+      }
+    });
   }
 }
 
