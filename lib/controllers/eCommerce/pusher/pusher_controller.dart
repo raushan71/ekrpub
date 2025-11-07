@@ -84,7 +84,7 @@ class PusherController extends StateNotifier<void> {
           
           // Update typing indicator provider
           if (shopId != null) {
-            ref.read(typingIndicatorProvider(shopId).notifier).setTyping(shopId, isTyping);
+            ref.read(typingIndicatorStateProvider.notifier).setTyping(shopId, isTyping);
           }
         }
       } else {
