@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import 'package:ekray/controllers/eCommerce/message/message_controller.dart';
+import 'package:ekray/controllers/eCommerce/typing_indicator_controller.dart';
 import 'package:ekray/models/eCommerce/message_model/messages.dart';
 import 'package:ekray/services/common/hive_service_provider.dart';
 import 'package:ekray/services/eCommerce/pusher/pusher_service.dart';
@@ -73,6 +74,18 @@ class PusherController extends StateNotifier<void> {
           debugPrint("✅ Message added to UI via Pusher");
         } else {
           debugPrint("⚠️ No message data in event payload");
+        }
+      } else if (event.eventName == 'typing-indicator') {
+        // Handle typing indicator from shop
+        if (decoded["type"] == "shop" && decoded["is_typing"] != null) {
+          final isTyping = decoded["is_typing"] as bool;
+          final shopId = decoded["shop_id"] as int?;
+          debugPrint("📝 Typing indicator: shop=$shopId, typing=$isTyping");
+          
+          // Update typing indicator provider
+          if (shopId != null) {
+            ref.read(typingIndicatorProvider(shopId).notifier).setTyping(shopId, isTyping);
+          }
         }
       } else {
         debugPrint("ℹ️ Unhandled event type: ${event.eventName}");

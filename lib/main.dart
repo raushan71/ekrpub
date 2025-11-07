@@ -189,8 +189,50 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Update online status when app becomes active
+      _updateOnlineStatus();
+    }
+  }
+
+  void _updateOnlineStatus() async {
+    try {
+      // Get user info from Hive
+      final userBox = Hive.box(AppConstants.userBox);
+      final userData = userBox.get(AppConstants.userData);
+      
+      if (userData != null && userData['id'] != null) {
+        // Update online status via API
+        // This will be handled by the message service
+        debugPrint('✅ App resumed - online status will be updated on next API call');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating online status on app resume: $e');
+    }
+  }
 
   Locale resolveLocal({required String langCode}) {
     return Locale(langCode);

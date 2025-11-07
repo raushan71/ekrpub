@@ -8,6 +8,7 @@ import 'package:ekray/config/app_text_style.dart';
 import 'package:ekray/config/theme.dart';
 import 'package:ekray/controllers/eCommerce/message/message_controller.dart';
 import 'package:ekray/controllers/eCommerce/pusher/pusher_controller.dart';
+import 'package:ekray/controllers/eCommerce/typing_indicator_controller.dart';
 import 'package:ekray/gen/assets.gen.dart';
 import 'package:ekray/models/eCommerce/message_model/messages.dart';
 import 'package:ekray/models/eCommerce/message_model/user.dart';
@@ -16,6 +17,7 @@ import 'package:ekray/models/eCommerce/shop_message_model/shop.dart';
 import 'package:ekray/services/common/hive_service_provider.dart';
 import 'package:ekray/utils/global_function.dart';
 import 'package:ekray/views/eCommerce/my_message/components/product_card_widget.dart';
+import 'dart:async';
 
 class MyChatLayout extends ConsumerStatefulWidget {
   final Shop shop;
@@ -25,14 +27,16 @@ class MyChatLayout extends ConsumerStatefulWidget {
   ConsumerState<MyChatLayout> createState() => _MyChatLayoutState();
 }
 
-class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
+class _MyChatLayoutState extends ConsumerState<MyChatLayout> with WidgetsBindingObserver {
   final TextEditingController messageController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final ScrollController _scrollController = ScrollController();
+  Timer? _typingTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Initialize Pusher for real-time messages
       ref.read(pusherControllerProvider.notifier).init();
@@ -42,10 +46,18 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
           .read(getMessageControllerProvider.notifier)
           .getMessage(shopId: widget.shop.id ?? 0, isInitial: true);
       
+      // Update online status when chat opens
+      _updateOnlineStatus();
+      
       // Scroll to bottom after a delay to ensure messages are loaded
       Future.delayed(Duration(milliseconds: 300), () {
       _scrollToBottom();
       });
+    });
+    
+    // Listen for typing indicator from Pusher
+    ref.listen(pusherControllerProvider, (previous, next) {
+      // Typing indicator will be handled via Pusher events
     });
 
     _scrollController.addListener(() {
@@ -71,6 +83,63 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
         });
       },
     );
+    
+    // Add listener for text changes to send typing indicator
+    messageController.addListener(_onTextChanged);
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _typingTimer?.cancel();
+    messageController.removeListener(_onTextChanged);
+    messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Update online status when app becomes active
+      _updateOnlineStatus();
+    }
+  }
+  
+  void _updateOnlineStatus() async {
+    try {
+      await ref.read(messageServiceProvider).updateOnlineStatus();
+      debugPrint('✅ Online status updated');
+    } catch (e) {
+      debugPrint('❌ Error updating online status: $e');
+    }
+  }
+  
+  void _onTextChanged() {
+    final text = messageController.text;
+    if (text.isNotEmpty) {
+      _sendTypingIndicator(true);
+      // Reset timer
+      _typingTimer?.cancel();
+      _typingTimer = Timer(Duration(seconds: 3), () {
+        _sendTypingIndicator(false);
+      });
+    } else {
+      _sendTypingIndicator(false);
+      _typingTimer?.cancel();
+    }
+  }
+  
+  void _sendTypingIndicator(bool isTyping) async {
+    try {
+      await ref.read(messageServiceProvider).sendTypingIndicator(
+        shopId: widget.shop.id ?? 0,
+        isTyping: isTyping,
+      );
+    } catch (e) {
+      debugPrint('❌ Error sending typing indicator: $e');
+    }
   }
 
   void _scrollToBottom() {
@@ -83,6 +152,37 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
         );
       }
     });
+  }
+  
+  Widget _buildTypingDot(int index) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 400),
+      width: 8.w,
+      height: 8.h,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade600,
+        shape: BoxShape.circle,
+      ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: Duration(milliseconds: 1200),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) {
+          final delay = index * 0.2;
+          final animatedValue = ((value + delay) % 1.0);
+          return Opacity(
+            opacity: animatedValue < 0.5 ? 0.3 : 1.0,
+            child: child,
+          );
+        },
+        onEnd: () {
+          // Restart animation
+          if (mounted) {
+            setState(() {});
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -189,6 +289,42 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
                             },
                           ),
                   ),
+                  
+                  // Typing indicator
+                  if (ref.watch(typingIndicatorProvider(widget.shop.id ?? 0)))
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                      child: Row(
+                        children: [
+                          ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: widget.shop.logo ?? '',
+                              width: 30.w,
+                              height: 30.h,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(18.r),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildTypingDot(0),
+                                SizedBox(width: 4.w),
+                                _buildTypingDot(1),
+                                SizedBox(width: 4.w),
+                                _buildTypingDot(2),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Input Field
                   Container(
@@ -266,6 +402,10 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
                                           type: "user",
                                           message: messageController.text,
                                           user: users);
+                                      // Stop typing indicator when sending
+                                      _sendTypingIndicator(false);
+                                      _typingTimer?.cancel();
+                                      
                                       // Optimistically add message to UI
                                       ref
                                           .read(getMessageControllerProvider
