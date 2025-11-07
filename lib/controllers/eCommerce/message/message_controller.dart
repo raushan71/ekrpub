@@ -70,8 +70,8 @@ class SendMessageController extends StateNotifier<bool> {
       // Check response status
       if (response.statusCode == 200 || response.statusCode == 201) {
         state = false;
-        // Refresh messages to get the latest from server
-        ref.read(getMessageControllerProvider.notifier).getMessage(shopId: shopId, isInitial: true);
+        // Don't refresh messages here - Pusher will handle real-time updates
+        // Only refresh if Pusher fails (which is rare now that it's working)
         return CommonResponse(
           isSuccess: true, 
           message: response.data['message'] ?? 'Message sent successfully'
@@ -84,7 +84,7 @@ class SendMessageController extends StateNotifier<bool> {
     } on DioException catch (e) {
       debugPrint('Dio error sending message: ${e.response?.statusCode} - ${e.response?.data}');
       if (mounted) {
-        state = false;
+      state = false;
       }
       
       String errorMessage = 'Failed to send message';

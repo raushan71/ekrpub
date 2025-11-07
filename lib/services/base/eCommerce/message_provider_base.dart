@@ -16,4 +16,6 @@ abstract class MessageProviderBase {
   });
   Future<Response> getShops({required String search});
   Future<Response> getTotalUnreadMessages();
+  Future<Response> sendTypingIndicator({required int shopId, required bool isTyping});
+  Future<Response> updateOnlineStatus();
 }

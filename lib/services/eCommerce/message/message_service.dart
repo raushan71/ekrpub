@@ -87,4 +87,25 @@ class MessageService implements MessageProviderBase {
     });
     return response;
   }
+
+  @override
+  Future<Response> sendTypingIndicator({required int shopId, required bool isTyping}) {
+    final response = ref.read(apiClientProvider).post(
+      AppConstants.typingIndicator,
+      data: {
+        'shop_id': shopId,
+        'is_typing': isTyping,
+      },
+    );
+    return response;
+  }
+
+  @override
+  Future<Response> updateOnlineStatus() {
+    final response = ref.read(apiClientProvider).post(
+      AppConstants.updateOnlineStatus,
+      data: {},
+    );
+    return response;
+  }
 }

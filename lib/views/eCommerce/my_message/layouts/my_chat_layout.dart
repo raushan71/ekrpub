@@ -44,7 +44,7 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
       
       // Scroll to bottom after a delay to ensure messages are loaded
       Future.delayed(Duration(milliseconds: 300), () {
-        _scrollToBottom();
+      _scrollToBottom();
       });
     });
 
@@ -271,16 +271,16 @@ class _MyChatLayoutState extends ConsumerState<MyChatLayout> {
                                           .read(getMessageControllerProvider
                                               .notifier)
                                           .addNewMessage(messageModel);
-                                      messageController.clear();
+                                        messageController.clear();
                                       
                                       // Send message to backend
                                       final result = await ref
-                                          .read(sendMessageControllerProvider
-                                              .notifier)
-                                          .sendMessage(
-                                            shopId: widget.shop.id ?? 0,
-                                            message: messageText,
-                                          );
+                                            .read(sendMessageControllerProvider
+                                                .notifier)
+                                            .sendMessage(
+                                              shopId: widget.shop.id ?? 0,
+                                              message: messageText,
+                                            );
                                       
                                       // Show error if message failed to send
                                       if (!result.isSuccess && mounted) {

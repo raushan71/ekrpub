@@ -73,6 +73,8 @@ class AppConstants {
   static const String sendMessage = '$baseUrl/send-message';
   static const String getShopsList = '$baseUrl/get-shops';
   static const String unreadMessage = '$baseUrl/unread-messages';
+  static const String typingIndicator = '$baseUrl/typing-indicator';
+  static const String updateOnlineStatus = '$baseUrl/update-online-status';
   static const String returnOrderSubmit = '$baseUrl/return-order';
   static const String returnHistory = '$baseUrl/return-history';
   static const String returnOrdersList = '$baseUrl/return-orders';
