@@ -773,7 +773,7 @@ class _EcommerceMyCartLayoutState extends ConsumerState<EcommerceMyCartLayout> {
                           // Validate shops are selected
                           if (ref.read(shopIdsProvider).isEmpty) {
                             GlobalFunction.showCustomSnackbar(
-                              message: S.of(context).pleaseSelectShopForConfirmTheCheckout,
+                              message: S.of(context).shopSelectValidation,
                               isSuccess: false,
                             );
                             return;
@@ -802,7 +802,6 @@ class _EcommerceMyCartLayoutState extends ConsumerState<EcommerceMyCartLayout> {
                               ).lerp(0.5),
                       ),
                     ),
-                  ),
                 ],
               ));
         });
