@@ -87,16 +87,36 @@ jobs:
         run: |
           APP_PATH="${{ steps.find_app.outputs.app_path }}"
           ZIP_NAME="Runner-appetize.zip"
+          WORKSPACE_ROOT="${{ github.workspace }}"
+          ZIP_PATH="$WORKSPACE_ROOT/$ZIP_NAME"
           
-          # Create zip file (Appetize.io accepts .app bundles directly or zipped)
-          cd "$(dirname "$APP_PATH")"
-          zip -r "$ZIP_NAME" "$(basename "$APP_PATH")" || ditto -c -k --keepParent "$(basename "$APP_PATH")" "$ZIP_NAME"
-          mv "$ZIP_NAME" ../../../
-          cd - > /dev/null
+          # Get absolute path of the app
+          if [[ "$APP_PATH" != /* ]]; then
+            APP_PATH="$WORKSPACE_ROOT/$APP_PATH"
+          fi
           
-          echo "zip_path=$(pwd)/$ZIP_NAME" >> $GITHUB_OUTPUT
-          echo "✅ Created zip archive: $ZIP_NAME"
-          ls -lah "$ZIP_NAME"
+          # Get the directory containing the app and the app name
+          APP_DIR="$(dirname "$APP_PATH")"
+          APP_NAME="$(basename "$APP_PATH")"
+          
+          # Create zip file in workspace root
+          # Change to app directory so zip contains just the app bundle name
+          cd "$APP_DIR"
+          zip -r "$ZIP_PATH" "$APP_NAME" || ditto -c -k --keepParent "$APP_NAME" "$ZIP_PATH"
+          cd "$WORKSPACE_ROOT"
+          
+          # Verify zip was created
+          if [ -f "$ZIP_PATH" ]; then
+            echo "✅ Created zip archive: $ZIP_PATH"
+            ls -lah "$ZIP_PATH"
+            echo "zip_path=$ZIP_PATH" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to create zip archive"
+            echo "App path: $APP_PATH"
+            echo "App dir: $APP_DIR"
+            echo "App name: $APP_NAME"
+            exit 1
+          fi
 
       - name: Upload to Appetize.io
         id: upload_appetize
