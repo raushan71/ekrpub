@@ -29,7 +29,7 @@ class _BannerWidgetState extends ConsumerState<BannerWidget> {
 
   @override
   void dispose() {
-    _carouselController.dispose();
+    // CarouselSliderController doesn't need explicit disposal
     super.dispose();
   }
 
