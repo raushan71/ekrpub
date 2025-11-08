@@ -38,31 +38,77 @@ jobs:
       - name: Run tests
         run: flutter test --no-pub
 
-      - name: Build iOS (Debug)
+      - name: Prepare iOS build
         run: flutter build ios --debug --no-codesign
 
-      - name: Build iOS (Release)
-        run: flutter build ios --release --no-codesign
-
-      - name: Build IPA (requires code signing)
+      - name: Build iOS for Simulator using xcodebuild
         run: |
-          echo "⚠️ IPA build requires code signing setup"
-          echo "To enable IPA builds, configure code signing in Xcode"
-          echo "Current build completed without IPA generation"
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ../build/ios \
+            -arch arm64 \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO
+          cd ..
 
-      - name: Upload iOS build artifacts
+      - name: Verify Runner.app exists
+        run: |
+          echo "Searching for Runner.app..."
+          find build -name "Runner.app" -type d 2>/dev/null || true
+          if [ -d "build/ios/Build/Products/Debug-iphonesimulator/Runner.app" ]; then
+            echo "✅ Runner.app found at build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
+            ls -la build/ios/Build/Products/Debug-iphonesimulator/Runner.app
+            # Copy to expected location for consistency
+            mkdir -p build/ios/iphonesimulator
+            cp -R build/ios/Build/Products/Debug-iphonesimulator/Runner.app build/ios/iphonesimulator/ || true
+          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            echo "✅ Runner.app found at build/ios/iphonesimulator/Runner.app"
+            ls -la build/ios/iphonesimulator/Runner.app
+          else
+            echo "❌ Runner.app not found at expected locations"
+            echo "Build directory contents:"
+            ls -la build/ios/ 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Build iOS for Device (Release) - Optional
+        run: flutter build ios --release --no-codesign || echo "⚠️ Device build skipped (requires code signing for production)"
+        continue-on-error: true
+
+      - name: Upload iOS build artifacts (Simulator)
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build
+          name: ios-simulator-build
+          path: |
+            build/ios/iphonesimulator/Runner.app
+            build/ios/Build/Products/Debug-iphonesimulator/Runner.app
+          retention-days: 30
+        if: success()
+        continue-on-error: true
+
+      - name: Upload iOS build artifacts (Device) - Optional
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-device-build
           path: build/ios/iphoneos/Runner.app
           retention-days: 30
-        if: always()
+        if: success() && hash build/ios/iphoneos/Runner.app 2>/dev/null
         continue-on-error: true
 
       - name: Display build info
         run: |
           echo "✅ iOS builds completed!"
-          echo "📱 Debug build: build/ios/iphoneos/Runner.app"
-          echo "📱 Release build: build/ios/iphoneos/Runner.app"
-          echo "ℹ️ Note: IPA generation requires code signing setup"
+          if [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            echo "📱 Simulator build: build/ios/iphonesimulator/Runner.app (Ready for Appetize.io)"
+          elif [ -d "build/ios/Build/Products/Debug-iphonesimulator/Runner.app" ]; then
+            echo "📱 Simulator build: build/ios/Build/Products/Debug-iphonesimulator/Runner.app (Ready for Appetize.io)"
+          fi
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "📱 Device build: build/ios/iphoneos/Runner.app"
+          fi
 

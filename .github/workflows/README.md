@@ -24,9 +24,21 @@ This repository includes automated CI/CD workflows for building, testing, and de
   - ✅ CocoaPods installation
   - ✅ Code analysis
   - ✅ Unit tests
-  - ✅ Build iOS Debug
-  - ✅ Build iOS Release
+  - ✅ Build iOS Simulator (for Appetize.io)
+  - ✅ Build iOS Device (optional)
+  - ✅ Verify Runner.app exists
   - ⚠️ IPA generation (requires code signing setup)
+
+### 2.1. **iOS Appetize.io Test** (`.github/workflows/ios-appetize.yml`)
+- **Triggers**: Push/PR to `main` or `develop`, Manual dispatch, After iOS Build workflow
+- **Runs on**: macOS Latest
+- **Actions**:
+  - ✅ Build iOS app for simulator
+  - ✅ Verify Runner.app bundle
+  - ✅ Create zip archive for Appetize.io
+  - ✅ Upload to Appetize.io (requires token)
+  - ✅ Post preview URL to PR comments
+  - ✅ Upload build artifacts
 
 ### 3. **Code Analysis & Tests** (`.github/workflows/analyze-test.yml`)
 - **Triggers**: Push/PR to `main` or `develop`, Manual dispatch
@@ -116,6 +128,8 @@ Android builds use Java **17** (Zulu distribution).
 - iOS builds require macOS runners (paid GitHub plans)
 - Code signing required for IPA generation
 - CocoaPods installation may fail - check Podfile
+- **Runner.app not found**: The workflow now builds for simulator and verifies the app exists before upload
+- **Appetize.io upload fails**: Ensure `APPETIZE_TOKEN` secret is set correctly
 
 ### Firebase Configuration
 - Ensure `google-services.json` exists for Android
@@ -131,11 +145,26 @@ Android builds use Java **17** (Zulu distribution).
 
 ## 🔐 Secrets (Optional)
 
+### Android Release Builds
 For release builds with signing, add these secrets:
 - `KEYSTORE_PASSWORD`
 - `KEY_ALIAS`
 - `KEY_PASSWORD`
 - `KEYSTORE_BASE64` (base64 encoded keystore file)
 
-Then update workflows to use signing configuration.
+### Appetize.io Integration
+To enable iOS app testing on Appetize.io, add this secret:
+- `APPETIZE_TOKEN` - Your Appetize.io API token
+
+**Getting your Appetize.io token:**
+1. Sign up or log in at [https://appetize.io](https://appetize.io)
+2. Go to your dashboard
+3. Navigate to API settings
+4. Copy your API token
+5. Add it as a GitHub Secret named `APPETIZE_TOKEN`
+
+Once configured, the iOS Appetize.io workflow will:
+- Automatically build and upload your iOS app
+- Provide a public URL to test your app in the browser
+- Comment on pull requests with the preview URL
 

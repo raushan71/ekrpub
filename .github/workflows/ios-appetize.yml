@@ -1,0 +1,174 @@
+name: iOS Appetize.io Test
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["iOS Build"]
+    types:
+      - completed
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'ios/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Prepare iOS build
+        run: flutter build ios --debug --no-codesign
+
+      - name: Build iOS for Simulator
+        run: |
+          cd ios
+          # Build for simulator (no code signing required)
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ../build/ios \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO
+          cd ..
+
+      - name: Find and verify Runner.app
+        id: find_app
+        run: |
+          echo "Searching for Runner.app..."
+          APP_PATH=""
+          if [ -d "build/ios/Build/Products/Debug-iphonesimulator/Runner.app" ]; then
+            APP_PATH="build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
+            echo "✅ Found Runner.app at: $APP_PATH"
+          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            APP_PATH="build/ios/iphonesimulator/Runner.app"
+            echo "✅ Found Runner.app at: $APP_PATH"
+          else
+            echo "❌ Runner.app not found!"
+            find build -name "Runner.app" -type d 2>/dev/null || echo "No Runner.app found anywhere"
+            exit 1
+          fi
+          
+          # Verify it's a valid app bundle
+          if [ ! -f "$APP_PATH/Info.plist" ]; then
+            echo "❌ Invalid app bundle: Info.plist not found"
+            exit 1
+          fi
+          
+          echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
+          echo "✅ Runner.app verified successfully"
+          ls -lah "$APP_PATH"
+
+      - name: Create zip archive for Appetize.io
+        id: create_zip
+        run: |
+          APP_PATH="${{ steps.find_app.outputs.app_path }}"
+          ZIP_NAME="Runner-appetize.zip"
+          
+          # Create zip file (Appetize.io accepts .app bundles directly or zipped)
+          cd "$(dirname "$APP_PATH")"
+          zip -r "$ZIP_NAME" "$(basename "$APP_PATH")" || ditto -c -k --keepParent "$(basename "$APP_PATH")" "$ZIP_NAME"
+          mv "$ZIP_NAME" ../../../
+          cd - > /dev/null
+          
+          echo "zip_path=$(pwd)/$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Created zip archive: $ZIP_NAME"
+          ls -lah "$ZIP_NAME"
+
+      - name: Upload to Appetize.io
+        id: upload_appetize
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+        run: |
+          if [ -z "$APPETIZE_TOKEN" ]; then
+            echo "⚠️ APPETIZE_TOKEN not set. Skipping upload to Appetize.io"
+            echo "To enable Appetize.io uploads, add APPETIZE_TOKEN to GitHub Secrets"
+            echo "Get your token from: https://appetize.io/dashboard"
+            exit 0
+          fi
+          
+          ZIP_PATH="${{ steps.create_zip.outputs.zip_path }}"
+          
+          echo "📤 Uploading to Appetize.io..."
+          RESPONSE=$(curl -X POST "https://api.appetize.io/v1/apps" \
+            -H "Authorization: Bearer $APPETIZE_TOKEN" \
+            -F "file=@$ZIP_PATH" \
+            -F "platform=ios" \
+            -F "note=Build from GitHub Actions - ${{ github.sha }}")
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Upload successful!"
+            echo "Response: $RESPONSE"
+            
+            # Extract public URL from response
+            PUBLIC_URL=$(echo $RESPONSE | grep -o '"publicURL":"[^"]*' | cut -d'"' -f4 || echo "")
+            if [ -n "$PUBLIC_URL" ]; then
+              echo "🌐 Public URL: $PUBLIC_URL"
+              echo "appetize_url=$PUBLIC_URL" >> $GITHUB_OUTPUT
+            fi
+            
+            # Extract app ID from response
+            APP_ID=$(echo $RESPONSE | grep -o '"publicKey":"[^"]*' | cut -d'"' -f4 || echo "")
+            if [ -n "$APP_ID" ]; then
+              echo "📱 App ID: $APP_ID"
+              echo "appetize_app_id=$APP_ID" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Upload failed!"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-appetize-build
+          path: |
+            ${{ steps.find_app.outputs.app_path }}
+            ${{ steps.create_zip.outputs.zip_path }}
+          retention-days: 30
+
+      - name: Comment PR with Appetize.io URL
+        id: comment_pr
+        if: github.event_name == 'pull_request' && steps.upload_appetize.outputs.appetize_url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📱 iOS App Preview on Appetize.io\n\n✅ Build completed and uploaded successfully!\n\n🌐 **Preview URL:** ${{ steps.upload_appetize.outputs.appetize_url }}\n\nTest your iOS app directly in the browser.`
+            })
+
+      - name: Display results
+        run: |
+          echo "✅ iOS Appetize.io workflow completed!"
+          echo "📱 App path: ${{ steps.find_app.outputs.app_path }}"
+          echo "📦 Zip path: ${{ steps.create_zip.outputs.zip_path }}"
+          if [ -n "${{ steps.upload_appetize.outputs.appetize_url }}" ]; then
+            echo "🌐 Appetize.io URL: ${{ steps.upload_appetize.outputs.appetize_url }}"
+          fi
+
