@@ -19,12 +19,25 @@ class AppBottomNavbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Get system padding for Android navigation bar
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    
     return Container(
-      height: 80.h,
-      padding: EdgeInsets.symmetric(vertical: 5.h),
+      height: 80.h + bottomPadding,
+      padding: EdgeInsets.only(
+        top: 5.h,
+        bottom: bottomPadding + 5.h,
+      ),
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,

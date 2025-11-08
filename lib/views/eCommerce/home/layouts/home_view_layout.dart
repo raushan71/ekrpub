@@ -58,7 +58,10 @@ class _EcommerceHomeViewLayoutState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.refresh(currentPageController.notifier).state;
+      // Reset banner page controller if needed
+      if (mounted) {
+        ref.read(currentPageController.notifier).state = 0;
+      }
       ref.read(flashSalesListControllerProvider.notifier).getFlashSalesList();
     });
     pageController.addListener(_pageListener);

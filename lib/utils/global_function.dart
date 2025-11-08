@@ -21,6 +21,10 @@ class GlobalFunction {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        // Configure system navigation bar to be transparent but visible
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
       ),
     );
   }
