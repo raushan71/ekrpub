@@ -757,11 +757,28 @@ class _EcommerceMyCartLayoutState extends ConsumerState<EcommerceMyCartLayout> {
                   const Spacer(),
                   Flexible(
                     flex: 3,
-                    child: AbsorbPointer(
-                      absorbing: ref.watch(shopIdsProvider).isEmpty,
-                      child: CustomButton(
+                    child: CustomButton(
                         buttonText: S.of(context).checkout,
                         onPressed: () {
+                          // Auto-select all shops if none are selected
+                          if (ref.read(shopIdsProvider).isEmpty) {
+                            ref.read(shopIdsProvider.notifier).addAllShopIds();
+                            // Recalculate cart summary with selected shops
+                            ref.read(cartSummeryController.notifier).calculateCartSummery(
+                                  couponCode: promoCodeController.text,
+                                  shopIds: ref.read(shopIdsProvider).toList(),
+                                );
+                          }
+                          
+                          // Validate shops are selected
+                          if (ref.read(shopIdsProvider).isEmpty) {
+                            GlobalFunction.showCustomSnackbar(
+                              message: S.of(context).pleaseSelectShopForConfirmTheCheckout,
+                              isSuccess: false,
+                            );
+                            return;
+                          }
+                          
                           context.nav.pushNamed(
                             Routes.getCheckoutViewRouteName(
                               AppConstants.appServiceName,

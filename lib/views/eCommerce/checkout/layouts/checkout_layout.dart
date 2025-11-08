@@ -60,6 +60,7 @@ class _EcommerceCheckoutLayoutState
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       init();
       ref.refresh(profileInfoControllerProvider);
+      _autoSelectPaymentMethod();
     });
     super.initState();
   }
@@ -68,6 +69,17 @@ class _EcommerceCheckoutLayoutState
     ref.watch(hiveServiceProvider).getDefaultAddress().then((address) {
       ref.read(selectedDeliveryAddress.notifier).state = address;
     });
+    
+    // Auto-select shops if none are selected (for buy now or direct checkout)
+    if (ref.read(shopIdsProvider).isEmpty) {
+      ref.read(shopIdsProvider.notifier).addAllShopIds();
+    }
+  }
+  
+  void _autoSelectPaymentMethod() {
+    // This method is called in initState, but master data might not be loaded yet
+    // The actual auto-selection happens in _buildToBePaidWidget when master data is available
+    // This is just a placeholder to ensure the method exists
   }
 
   @override
@@ -248,6 +260,30 @@ class _EcommerceCheckoutLayoutState
     bool isOnlinePaymentEnable = masterData.data.onlinePayment;
     debugPrint('isCashonDeliveryEnable: $isCashonDeliveryEnable');
     debugPrint('isOnlinePaymentEnable: $isOnlinePaymentEnable');
+    
+    // Auto-select payment method if only one is available (run when widget builds)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (selectedPaymentType == PaymentType.none) {
+        if (isCashonDeliveryEnable && !isOnlinePaymentEnable) {
+          // Only cash on delivery available
+          setState(() {
+            selectedPaymentType = PaymentType.cash;
+          });
+        } else if (!isCashonDeliveryEnable && isOnlinePaymentEnable) {
+          // Only online payment available
+          setState(() {
+            selectedPaymentType = PaymentType.online;
+          });
+          
+          // Auto-select payment gateway if only one is available
+          final paymentGateways = masterData.data.paymentGateways ?? [];
+          if (paymentGateways.length == 1 && ref.read(selectedPayment).isEmpty) {
+            ref.read(selectedPayment.notifier).state = paymentGateways[0].name;
+          }
+        }
+      }
+    });
+    
     return Column(
       children: [
         Row(
@@ -308,6 +344,11 @@ class _EcommerceCheckoutLayoutState
                     if (selectedPaymentType != PaymentType.online) {
                       setState(() {
                         selectedPaymentType = PaymentType.online;
+                        // Auto-select payment gateway if only one is available
+                        final paymentGateways = masterData.data.paymentGateways ?? [];
+                        if (paymentGateways.length == 1 && ref.read(selectedPayment).isEmpty) {
+                          ref.read(selectedPayment.notifier).state = paymentGateways[0].name;
+                        }
                       });
                     }
                   },
@@ -499,23 +540,27 @@ class _EcommerceCheckoutLayoutState
   }
 
   Widget _buildPaymentMethodsWidget() {
+    final paymentGateways = ref
+        .read(masterControllerProvider.notifier)
+        .materModel
+        .data
+        .paymentGateways;
+    
+    // Auto-select payment gateway if only one is available
+    if (paymentGateways.length == 1 && ref.read(selectedPayment).isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(selectedPayment.notifier).state = paymentGateways[0].name;
+      });
+    }
+    
     return SizedBox(
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.only(top: 16.h),
         shrinkWrap: true,
-        itemCount: ref
-            .read(masterControllerProvider.notifier)
-            .materModel
-            .data
-            .paymentGateways
-            .length,
+        itemCount: paymentGateways.length,
         itemBuilder: (context, index) {
-          final paymentMethod = ref
-              .read(masterControllerProvider.notifier)
-              .materModel
-              .data
-              .paymentGateways[index];
+          final paymentMethod = paymentGateways[index];
           return Padding(
             padding: EdgeInsets.only(bottom: 10.h),
             child: PaymentCard(
