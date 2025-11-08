@@ -91,13 +91,25 @@ jobs:
         if: success()
         continue-on-error: true
 
+      - name: Check if device build exists
+        id: check_device_build
+        run: |
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "device_build_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Device build found"
+          else
+            echo "device_build_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Device build not found (this is optional)"
+          fi
+        continue-on-error: true
+
       - name: Upload iOS build artifacts (Device) - Optional
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
           path: build/ios/iphoneos/Runner.app
           retention-days: 30
-        if: success() && hash build/ios/iphoneos/Runner.app 2>/dev/null
+        if: steps.check_device_build.outputs.device_build_exists == 'true'
         continue-on-error: true
 
       - name: Display build info
