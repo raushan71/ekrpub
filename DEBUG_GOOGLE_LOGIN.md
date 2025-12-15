@@ -1,6 +1,6 @@
 # Debug Google Sign-In Customer Issue
 
-## Problem
+## Problem 
 Google Sign-In shows "user account setup incomplete" error, but regular login works fine.
 
 ## Root Cause
