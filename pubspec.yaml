@@ -1,7 +1,7 @@
 name: ekray
-description: A Flutter e-commerce mobile application for Ekray.
+description: EKray – Online Saree & Fashion Shopping App.
 publish_to: none
-version: 1.0.5+7
+version: 1.0.5+8
 environment:
   sdk: ">=3.5.3 <4.0.0"
 
