@@ -1,7 +1,7 @@
 name: ekray
 description: EKray – Online Saree & Fashion Shopping App.
 publish_to: none
-version: 1.0.5+8
+version: 1.0.5+10
 environment:
   sdk: ">=3.5.3 <4.0.0"
 
